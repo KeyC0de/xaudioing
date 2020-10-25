@@ -1,9 +1,4 @@
 #include "winner.h"
-#include <xaudio2.h>
-//#include <xaudio2fx.h>
-//#include <xapofx.h>
-#include <x3daudio.h>
-
 #include "sound_manager.h"
 #include "assertions.h"
 
@@ -13,6 +8,9 @@
 #ifdef _DEBUG
 #	include <iostream>
 #endif // _DEBUG
+
+#pragma comment( lib, "xaudio2_8.lib" )
+
 
 namespace mwrl = Microsoft::WRL;
 
@@ -30,7 +28,7 @@ SoundManager::Channel::~Channel() noexcept
 }
 
 void SoundManager::Channel::setupChannel( SoundManager& soundManager,
-	Sound& sound)
+	Sound& sound )
 {
 	class VoiceCallback : public IXAudio2VoiceCallback
 	{
@@ -47,7 +45,11 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 			channel.stopSound();
 			{
 				std::lock_guard<std::mutex> lg{ channel.m_pSound->m_mu };
-				removeByBackSwap( channel.m_pSound->m_busyChannels, channel );
+				channel.m_pSound->m_busyChannels.erase(
+					std::find( channel.m_pSound->m_busyChannels.begin(),
+						channel.m_pSound->m_busyChannels.end(),
+						&channel ) );
+				//removeByBackSwap( channel.m_pSound->m_busyChannels, &channel );
 				channel.m_pSound->m_busyChannels.erase(std::find(
 					channel.m_pSound->m_busyChannels.begin(),channel.m_pSound->m_busyChannels.end(), &channel));
 				// notify any thread that might be waiting for activeChannels
@@ -55,7 +57,7 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 				channel.m_pSound->m_condVar.notify_all();
 			}
 			channel.m_pSound = nullptr;
-			SoundSystem::getInstance().deactivateChannel( channel );
+			SoundManager::getInstance().disableChannel( channel );
 		}
 		// Called when the voice reaches the end position of a loop.
 		void STDMETHODCALLTYPE OnLoopEnd( void* pBufferContext ) override
@@ -155,15 +157,29 @@ void SoundManager::Channel::playSound( Sound* sound,
 {
 	ASSERT( m_pSound, L"Null Sound!" );
 	ASSERT( m_pSourceVoice, L"Null Voice!" );
-	std::unique_lock ul{ sound->m_mu };
+	std::unique_lock<std::mutex> ul{ sound->m_mu };
 	sound->m_busyChannels.emplace_back( this );
 
 	HRESULT hres = m_pSourceVoice->SetVolume( volume );
 	ASSERT_HRES_IF_FAILED;
+#pragma warning(suppress: 4244)
 	hres = m_pSourceVoice->SetSourceSampleRate( freqRatio );
 	ASSERT_HRES_IF_FAILED;
-	hres = m_pSourceVoice->Start();
+	hres = m_pSourceVoice->Start( 0u );
 	ASSERT_HRES_IF_FAILED;
+
+	/*
+	BOOL isPlayingSound = TRUE;
+	XAUDIO2_VOICE_STATE soundState = {0};
+	HRESULT hres = m_pSourceVoice->Start( 0u );
+	while ( SUCCEEDED( hres ) && isPlayingSound )
+	{// loop till sound completion
+		m_pSourceVoice->GetState( &soundState );
+		isPlayingSound = ( soundState.BuffersQueued > 0 ) != 0;
+		Sleep( 250 );
+	}
+	ASSERT_HRES_IF_FAILED;
+	*/
 }
 
 void SoundManager::Channel::stopSound()
@@ -174,7 +190,7 @@ void SoundManager::Channel::stopSound()
 	m_pSourceVoice->FlushSourceBuffers();
 }
 
-bool SoundManager::Channel::rechannel( const Sound* pOldSound, Sound* pNewSound )
+void SoundManager::Channel::rechannel( const Sound* pOldSound, Sound* pNewSound )
 {
 	ASSERT( pOldSound == pNewSound, L"Channel mismatch!" );
 	m_pSound.reset( pNewSound );
@@ -195,7 +211,7 @@ SoundManager& SoundManager::getInstance( WAVEFORMATEXTENSIBLE* format )
 SoundManager::~SoundManager() noexcept
 {
 	{
-		std::unique_lock ul{ m_mu };
+		std::unique_lock<std::mutex> ul{ m_mu };
 		m_occupiedChannels.clear();
 		m_idleChannels.clear();
 	}
@@ -212,7 +228,7 @@ void SoundManager::playChannelSound( Sound* sound,
 	float volume,
 	float freqRatio )
 {
-	std::unique_lock ul{ m_mu };
+	std::unique_lock<std::mutex> ul{ m_mu };
 	if ( !m_idleChannels.empty() )
 	{
 		for ( int i = 0; i < m_idleChannels.size(); ++i )
@@ -238,7 +254,7 @@ bool SoundManager::disableChannel( Channel& channel )
 	auto ref = std::find_if( m_occupiedChannels.begin(),
 		m_occupiedChannels.end(),
 		[&channel] ( const std::unique_ptr<Channel>& cha ) {
-			&channel == cha.get();
+			return &channel == cha.get();
 		} );
 	if ( &ref == nullptr )
 		return false;
@@ -476,7 +492,10 @@ Sound::Sound( Sound&& rhs )
 	:
 	m_name{ std::move( rhs.m_name ) }
 {
-	std::unique_lock ul{ rhs.m_mu };
+	// lock the rhs mutex before we copy/move to guard from 
+	std::unique_lock<std::mutex> ulr{ rhs.m_mu, std::defer_lock };
+	std::unique_lock<std::mutex> ull{ m_mu, std::defer_lock };
+	std::lock( ull, ulr );
 	m_audioData = std::move( rhs.m_audioData );
 	m_busyChannels = std::move( rhs.m_busyChannels );
 	for ( auto& channel : m_busyChannels )
@@ -499,29 +518,29 @@ Sound::~Sound() noexcept
 {
 	if ( !m_busyChannels.empty() )
 	{
-		std::lock_guard lg{ m_mu };
+		std::unique_lock<std::mutex> ul{ m_mu };
 		for ( const auto& i : m_busyChannels )
 		{
 			i->stopSound();
 		}
 		// wait for those channels to finish playing
-		m_condVar.wait( m_mu,
+		m_condVar.wait( ul,
 			[this] () { return m_busyChannels.size() == 0; } );
 	}
 }
 
-std::wstring Sound::getName() const noexcept
+std::wstring Sound::getName() const
 {
 	return m_name;
 }
 
-std::wstring Sound::getTypeName() const noexcept
+std::wstring Sound::getTypeName() const
 {
 	return std::wstring();
 }
 
-void Sound::play( float volume = 1.0f,
-	float freqRatio = 1.0f )
+void Sound::play( float volume,
+	float freqRatio)
 {
 	SoundManager::getInstance( m_pWaveFormat.get() )
 		.playChannelSound( this,
@@ -531,4 +550,12 @@ void Sound::play( float volume = 1.0f,
 
 void Sound::stop()
 {
+	std::lock_guard<std::mutex> lg{ m_mu };
+	if ( !m_busyChannels.empty() )
+	{
+		for ( const auto& channel : m_busyChannels )
+		{
+			channel->stopSound();
+		}
+	}
 }

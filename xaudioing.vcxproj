@@ -82,12 +82,8 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <SDLCheck>false</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>_DEBUG;_UNICODE;UNICODE;_IS_DEBUG=true;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link />
   </ItemDefinitionGroup>

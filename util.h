@@ -3,6 +3,8 @@
 #include <string>
 #include "com_initializer.h"
 #include <comdef.h>
+#include <vector>
+#include <algorithm>
 
 #define pass (void)0;
 
@@ -31,12 +33,10 @@ std::wstring printHresultErrorDescription( HRESULT hres )
 		std::exit( hres );\
 	}
 
-#include <vector>
-
 template<typename T>
-void removeByBackSwap( std::vector<T>& v, std::size_t index )
+void removeByBackSwap( std::vector<typename T>& v, std::size_t index )
 {
-	std::vector<T>::iterator pback = v.back();
+	auto& pback = v.back();
 	std::swap( v[index], pback );
 	v.pop_back();
 }

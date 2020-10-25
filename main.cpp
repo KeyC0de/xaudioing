@@ -1,11 +1,14 @@
 #include "com_initializer.h"
 #include "sound_manager.h"
 
-#pragma comment( lib, "xaudio2_8.lib" )
 
 int main()
 {
 	COMInitializer comInitializer;
+	const wchar_t* zsFilename1 = L"assets\\sfx\\ARNOLD_i'll_be_back.wav";
+	Sound arnie{ zsFilename1, L"Arnie" };
+
+	std::system( "pause" );
 
 	/*
 	// 1st.

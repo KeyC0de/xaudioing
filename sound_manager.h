@@ -10,6 +10,12 @@
 
 #define cond_noex noexcept( !_IS_DEBUG )
 
+#include <xaudio2.h>
+//#include <xaudio2fx.h>
+//#include <xapofx.h>
+#include <x3daudio.h>
+//typedef struct WAVEFORMATEXTENSIBLE;
+
 namespace sound_wave_properties
 {
 	// wav properties - all sounds must have the same format
@@ -59,11 +65,11 @@ public:
 		//	\function	rechannel
 		//	\brief  finds new channel for the existing Sound
 		//	\date	2020/10/25 19:18
-		bool rechannel( const class Sound* pOldSound, class Sound* pNewSound );
+		void rechannel( const class Sound* pOldSound, class Sound* pNewSound );
 		class Sound* getSound() const cond_noex;
 	private:
-		class IXAudio2SourceVoice* m_pSourceVoice = nullptr;
-		class std::unique_ptr<class Sound> m_pSound;
+		IXAudio2SourceVoice* m_pSourceVoice = nullptr;
+		std::unique_ptr<class Sound> m_pSound;
 	};
 
 	//class SubmixType final
@@ -85,7 +91,7 @@ public:
 	//	\function	getInstance
 	//	\brief  return the single instance of the class
 	//	\date	2020/10/24 1:48
-	static SoundManager& getInstance( WAVEFORMATEXTENSIBLE* format );
+	static SoundManager& getInstance( WAVEFORMATEXTENSIBLE* format = nullptr );
 public:
 	SoundManager( const SoundManager& rhs ) = delete;
 	SoundManager& operator=( const SoundManager& rhs ) = delete;
@@ -109,8 +115,8 @@ private:
 private:
 	WAVEFORMATEXTENSIBLE* m_pFormat;
 
-	Microsoft::WRL::ComPtr<class IXAudio2> m_pXAudio2;
-	class IXAudio2MasteringVoice* m_pMasterVoice = nullptr;
+	Microsoft::WRL::ComPtr<IXAudio2> m_pXAudio2;
+	IXAudio2MasteringVoice* m_pMasterVoice = nullptr;
 	std::mutex m_mu;
 	std::vector<std::unique_ptr<Channel>> m_occupiedChannels;
 	std::vector<std::unique_ptr<Channel>> m_idleChannels;
@@ -181,18 +187,3 @@ private:
 	std::condition_variable m_condVar;
 	std::vector<SoundManager::Channel*> m_busyChannels;	// those are currently playing
 };
-
-/*
-void play( IXAudio2SourceVoice* sourceVoice )
-{
-	BOOL isPlayingSound = TRUE;
-	XAUDIO2_VOICE_STATE soundState = {0};
-	HRESULT hres = sourceVoice->Start( 0u );
-	while ( SUCCEEDED( hres ) && isPlayingSound )
-	{// loop till sound completion
-		sourceVoice->GetState( &soundState );
-		isPlayingSound = ( soundState.BuffersQueued > 0 ) != 0;
-		Sleep( 250 );
-	}
-	ASSERT_HRES_IF_FAILED;
-}*/
