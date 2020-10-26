@@ -1,3 +1,5 @@
+#pragma comment( lib, "xaudio2_8.lib" )
+
 #include "com_initializer.h"
 #include "sound_manager.h"
 
@@ -9,7 +11,7 @@ int main()
 	Sound arnie{ zsFilename1, L"Arnie" };
 
 	arnie.play();
-
+	
 	std::system( "pause" );
 
 	/*
@@ -69,4 +71,6 @@ int main()
 	//	by adjusting just the submix voice
 	pSubmixVoice->SetVolume( 0.1 );
 	*/
+
+	return 0;
 }

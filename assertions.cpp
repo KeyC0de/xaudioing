@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #ifdef UNICODE
+// just builds the error string
 bool assertPrint( const wchar_t* expr,
 	const wchar_t* file,
 	int line,
@@ -35,6 +36,7 @@ bool assertPrint( const wchar_t* expr,
 }
 
 #else
+// just builds the error string
 bool assertPrint( const char* expr,
 	const char* file,
 	int line,

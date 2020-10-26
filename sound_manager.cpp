@@ -9,9 +9,6 @@
 #	include <iostream>
 #endif // _DEBUG
 
-#pragma comment( lib, "xaudio2_8.lib" )
-
-
 namespace mwrl = Microsoft::WRL;
 
 
@@ -25,16 +22,14 @@ namespace sound_wave_properties
 }// sound_wave_properties
 
 
-SoundManager::Channel::Channel()
-{
-}
-
 SoundManager::Channel::~Channel() noexcept
 {
-	ASSERT( m_pSound, L"Null sound!" );
-	ASSERT( m_pSourceVoice, L"Null voice!" );
-	m_pSourceVoice->DestroyVoice();
-	m_pSourceVoice = nullptr;
+	if ( m_pSourceVoice || m_pSound )
+	{
+		m_pSourceVoice->DestroyVoice();
+		m_pSourceVoice = nullptr;
+		m_pSound = nullptr;
+	}
 }
 
 SoundManager::Channel::Channel( Channel&& rhs )
@@ -57,6 +52,8 @@ auto SoundManager::Channel::operator=( Channel&& rhs ) -> Channel&
 void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	Sound& sound )
 {
+	m_pSound.reset( &sound );
+
 	class VoiceCallback : public IXAudio2VoiceCallback
 	{
 	public:
@@ -71,22 +68,18 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 			Channel& channel = *reinterpret_cast<Channel*>( pBufferContext );
 			channel.stopSound();
 			{
-				std::lock_guard<std::mutex> lg{ channel.m_pSound->m_mu };
+				std::unique_lock<std::mutex> lg{ channel.m_pSound->m_mu };
+				// clear Sound's channels
 				channel.m_pSound->m_busyChannels.erase(
 					std::find( channel.m_pSound->m_busyChannels.begin(),
 						channel.m_pSound->m_busyChannels.end(),
 						&channel ) );
 				//removeByBackSwap( channel.m_pSound->m_busyChannels, &channel );
-				channel.m_pSound->m_busyChannels.erase(
-					std::find( channel.m_pSound->m_busyChannels.begin(),
-						channel.m_pSound->m_busyChannels.end(),
-						&channel ) );
 				// notify any thread that might be waiting for activeChannels
 				// to become zero (i.e. thread calling destructor)
 				channel.m_pSound->m_condVar.notify_all();
 			}
-			channel.m_pSound = nullptr;
-			SoundManager::getInstance().disableChannel( channel );
+			SoundManager::getInstance().rearrangeChannels( channel );
 		}
 		// Called when the voice reaches the end position of a loop.
 		void STDMETHODCALLTYPE OnLoopEnd( void* pBufferContext ) override
@@ -117,12 +110,9 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	};
 
 	static VoiceCallback voiceCallback;
-	ZeroMemory( &voiceCallback, sizeof( VoiceCallback ) );
-	HRESULT hres;
-
-	m_pSound.reset( &sound );
 	m_pSound->m_pXaudioBuffer->pContext = this;
 
+	HRESULT hres;
 	// 5. optional - specify an output (submix) voice for this source voice
 	UINT32 sourceVoiceCreationFlags = 0u;
 	//if ( pSubmixVoice )
@@ -192,24 +182,11 @@ void SoundManager::Channel::playSound( Sound* sound,
 
 	HRESULT hres = m_pSourceVoice->SetVolume( volume );
 	ASSERT_HRES_IF_FAILED;
-#pragma warning(suppress: 4244)
-	hres = m_pSourceVoice->SetSourceSampleRate( freqRatio );
-	ASSERT_HRES_IF_FAILED;
+//#pragma warning(suppress: 4244)
+//	hres = m_pSourceVoice->SetSourceSampleRate( freqRatio );
+//	ASSERT_HRES_IF_FAILED;
 	hres = m_pSourceVoice->Start( 0u );
 	ASSERT_HRES_IF_FAILED;
-
-	/*
-	BOOL isPlayingSound = TRUE;
-	XAUDIO2_VOICE_STATE soundState = {0};
-	HRESULT hres = m_pSourceVoice->Start( 0u );
-	while ( SUCCEEDED( hres ) && isPlayingSound )
-	{// loop till sound completion
-		m_pSourceVoice->GetState( &soundState );
-		isPlayingSound = ( soundState.BuffersQueued > 0 ) != 0;
-		Sleep( 250 );
-	}
-	ASSERT_HRES_IF_FAILED;
-	*/
 }
 
 void SoundManager::Channel::stopSound()
@@ -240,11 +217,9 @@ SoundManager& SoundManager::getInstance( WAVEFORMATEXTENSIBLE* format )
 
 SoundManager::~SoundManager() noexcept
 {
-	{
-		std::unique_lock<std::mutex> ul{ m_mu };
-		m_occupiedChannels.clear();
-		m_idleChannels.clear();
-	}
+	std::unique_lock<std::mutex> ul{ m_mu };
+	m_occupiedChannels.clear();
+	m_idleChannels.clear();
 	m_pMasterVoice->DestroyVoice();
 	m_pMasterVoice = nullptr;
 }
@@ -266,25 +241,28 @@ void SoundManager::playChannelSound( class Sound* sound,
 		channel->setupChannel( *this, *sound );
 		m_occupiedChannels.emplace_back( std::move( channel ) );
 		m_idleChannels.pop_back();
-		//removeByBackSwap( m_idleChannels,
-		//	getIndexOfBack( m_idleChannels ) );
 		m_occupiedChannels.back()->playSound( sound,
 			volume,
 			freqRatio );
 	}
 }
 
-bool SoundManager::disableChannel( Channel& channel )
+void SoundManager::rearrangeChannels( Channel& channel )
 {
+	std::lock_guard<std::mutex> lg{ m_mu };
+	// find the specified Channel
 	auto ref = std::find_if( m_occupiedChannels.begin(),
 		m_occupiedChannels.end(),
 		[&channel] ( const std::unique_ptr<Channel>& cha ) {
 			return &channel == cha.get();
 		} );
-	if ( &ref == nullptr )
-		return false;
+	ASSERT( &ref != nullptr, L"Channel was already absent!" );
 
-	return true;
+	// rearrange
+	m_idleChannels.emplace_back( std::move( *ref ) );
+	// *ref is moved, ref is just an iterator (contains ptr value)
+	// so use it to remove the Channel
+	m_occupiedChannels.erase( ref );
 }
 
 SoundManager::SoundManager( WAVEFORMATEXTENSIBLE* format )
@@ -377,7 +355,7 @@ HRESULT Sound::findChunk( HANDLE file,
             break;
 
         default:
-            if ( INVALID_SET_FILE_POINTER == SetFilePointer( file,
+            if ( INVALID_SET_FILE_POINTER == SetFilePointer( file, //-V303
 				chunkDataSize,
 				nullptr,
 				FILE_CURRENT ) )
@@ -408,7 +386,7 @@ HRESULT Sound::readChunkData( HANDLE file,
 	DWORD bufferoffset )
 {
     HRESULT hr = S_OK;
-    if ( INVALID_SET_FILE_POINTER == SetFilePointer( file,
+    if ( INVALID_SET_FILE_POINTER == SetFilePointer( file, //-V303
 		bufferoffset,
 		nullptr,
 		FILE_BEGIN ) )
@@ -446,7 +424,7 @@ Sound::Sound( const wchar_t* zsFilename,
 		ASSERT_HRES_IF_FAILED_( HRESULT_FROM_WIN32( GetLastError() ) );
 	}
 
-	HRESULT hres = SetFilePointer( file,
+	HRESULT hres = SetFilePointer( file, //-V303
 		0,
 		nullptr,
 		FILE_BEGIN );
@@ -501,7 +479,7 @@ Sound::Sound( const wchar_t* zsFilename,
 	ASSERT_HRES_IF_FAILED;
 
 	//std::wcout << chunkSize << L'\n';
-	m_audioData = std::make_unique<BYTE[]>( chunkSize );
+	m_audioData = std::make_unique<BYTE[]>( static_cast<std::size_t>( chunkSize ) );
 	hres = readChunkData( file,
 		m_audioData.get(),
 		chunkSize,

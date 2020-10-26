@@ -45,7 +45,7 @@ public:
 	{
 		friend class Sound;
 	public:
-		Channel();
+		Channel() = default;
 		Channel( const Channel& rhs ) = delete;
 		Channel& operator=( const Channel& rhs ) = delete;
 		~Channel() noexcept;
@@ -89,20 +89,18 @@ public:
 public:
 	SoundManager( const SoundManager& rhs ) = delete;
 	SoundManager& operator=( const SoundManager& rhs ) = delete;
-	//SoundManager( SoundManager&& rhs );
-	//SoundManager& operator=( SoundManager&& rhs );
+	//SoundManager( SoundManager&& rhs ) = delete;
+	//SoundManager& operator=( SoundManager&& rhs ) = delete;
 	~SoundManager() noexcept;
 
 	void setMasterVolume( float volume );
 	//void setSubmixVolume( float volume, const SubmixType& submix );
 	void playChannelSound( class Sound* sound, float volume, float freqRatio );
 	//===================================================
-	//	\function	disableChannel
-	//	\brief  places specified channel in the list of idle ones
-	//				and removes it from the list of active ones
-	//			returns bool whether if found the channel in the occupiedChannels list
+	//	\function	rearrangeChannels
+	//	\brief  removes occupied Channel & places it in the idle list
 	//	\date	2020/10/25 19:45
-	bool disableChannel( Channel& channel );
+	void rearrangeChannels( Channel& channel );
 	//void disableSubmixVoice( const SubmixType& submix );
 private:
 	SoundManager( WAVEFORMATEXTENSIBLE* format );
