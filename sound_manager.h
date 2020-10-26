@@ -63,7 +63,7 @@ public:
 		class Sound* getSound() const cond_noex;
 	private:
 		IXAudio2SourceVoice* m_pSourceVoice = nullptr;
-		std::unique_ptr<class Sound> m_pSound;
+		class Sound* m_pSound;
 	};
 
 	//class SubmixType final

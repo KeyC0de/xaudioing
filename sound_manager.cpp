@@ -52,7 +52,7 @@ auto SoundManager::Channel::operator=( Channel&& rhs ) -> Channel&
 void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	Sound& sound )
 {
-	m_pSound.reset( &sound );
+	m_pSound = &sound;
 
 	class VoiceCallback : public IXAudio2VoiceCallback
 	{
@@ -200,13 +200,13 @@ void SoundManager::Channel::stopSound()
 void SoundManager::Channel::rechannel( const Sound* pOldSound, Sound* pNewSound )
 {
 	ASSERT( pOldSound == pNewSound, L"Channel mismatch!" );
-	m_pSound.reset( pNewSound );
+	m_pSound = pNewSound;
 }
 
 Sound* SoundManager::Channel::getSound() const
 {
 	ASSERT( m_pSound, L"Sound is null!" );
-	return m_pSound.get();
+	return m_pSound;
 }
 
 SoundManager& SoundManager::getInstance( WAVEFORMATEXTENSIBLE* format )
