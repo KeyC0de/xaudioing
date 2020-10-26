@@ -53,7 +53,7 @@ public:
 		Channel& operator=( Channel&& rhs ) cond_noex;
 
 		void setupChannel( SoundManager& soundManager, class Sound& sound );
-		void playSound( class Sound* sound, float volume, float freqRatio );
+		void playSound( class Sound* sound, float volume );
 		void stopSound() cond_noex;
 		//===================================================
 		//	\function	rechannel
@@ -95,7 +95,7 @@ public:
 
 	void setMasterVolume( float volume );
 	//void setSubmixVolume( float volume, const SubmixType& submix );
-	void playChannelSound( class Sound* sound, float volume, float freqRatio );
+	void playChannelSound( class Sound* sound, float volume );
 	//===================================================
 	//	\function	rearrangeChannels
 	//	\brief  removes occupied Channel & places it in the idle list
@@ -170,7 +170,7 @@ public:
 	//			each sound type corresponds to a Submix voice
 	//	\date	2020/10/25 14:05
 	std::wstring getTypeName() const cond_noex;
-	void play( float volume = 1.0f, float freqRatio = 1.0f );
+	void play( float volume = 1.0f );
 	void stop();
 private:
 	std::wstring m_name;

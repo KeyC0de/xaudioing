@@ -172,8 +172,7 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 }
 
 void SoundManager::Channel::playSound( Sound* sound,
-	float volume,
-	float freqRatio )
+	float volume )
 {
 	ASSERT( m_pSound, L"Null Sound!" );
 	ASSERT( m_pSourceVoice, L"Null Voice!" );
@@ -182,9 +181,6 @@ void SoundManager::Channel::playSound( Sound* sound,
 
 	HRESULT hres = m_pSourceVoice->SetVolume( volume );
 	ASSERT_HRES_IF_FAILED;
-//#pragma warning(suppress: 4244)
-//	hres = m_pSourceVoice->SetSourceSampleRate( freqRatio );
-//	ASSERT_HRES_IF_FAILED;
 	hres = m_pSourceVoice->Start( 0u );
 	ASSERT_HRES_IF_FAILED;
 }
@@ -230,8 +226,7 @@ void SoundManager::setMasterVolume( float volume )
 }
 
 void SoundManager::playChannelSound( class Sound* sound,
-	float volume,
-	float freqRatio )
+	float volume )
 {
 	std::unique_lock<std::mutex> ul{ m_mu };
 	if ( !m_idleChannels.empty()
@@ -242,8 +237,7 @@ void SoundManager::playChannelSound( class Sound* sound,
 		m_occupiedChannels.emplace_back( std::move( channel ) );
 		m_idleChannels.pop_back();
 		m_occupiedChannels.back()->playSound( sound,
-			volume,
-			freqRatio );
+			volume );
 	}
 }
 
@@ -543,13 +537,11 @@ std::wstring Sound::getTypeName() const
 	return std::wstring();
 }
 
-void Sound::play( float volume,
-	float freqRatio )
+void Sound::play( float volume )
 {
 	SoundManager::getInstance( m_pWaveFormat.get() )
 		.playChannelSound( this,
-			volume,
-			freqRatio );
+			volume );
 }
 
 void Sound::stop()

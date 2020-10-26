@@ -7,10 +7,20 @@
 int main()
 {
 	COMInitializer comInitializer;
-	const wchar_t* zsFilename1 = L"assets\\sfx\\ARNOLD_i'll_be_back.wav";
-	Sound arnie{ zsFilename1, L"Arnie" };
+	// 1.
+	//const wchar_t* zsFilename1 = L"assets\\sfx\\ARNOLD_i'll_be_back.wav";
+	const wchar_t* zsFilename2 = L"assets\\sfx\\AmbientCity_TypeB02.wav";
+	//const wchar_t* zsFilename3 = L"assets\\sfx\\Anthrax - I am the Law.wav";
+	//Sound arnie{ zsFilename1, L"Arnie" };
 
-	arnie.play();
+	//arnie.play();
+	
+	//// 2.
+	Sound ambience{ zsFilename2, L"City Ambience" };
+	ambience.play(.5f);
+	//
+	//// 3.
+	
 	
 	std::system( "pause" );
 
@@ -43,7 +53,6 @@ int main()
 	XAUDIO2_BUFFER xaudioBuffer2 = {0};
 	WAVEFORMATEXTENSIBLE waveFmt2 = {0};
 	BYTE* pDataBuffer2 = nullptr;
-	const wchar_t* zsFilename2 = L"assets\\sfx\\AmbientCity_TypeB02.wav";
 	IXAudio2SourceVoice* pSourceVoice2 = nullptr;
 	
 	pDataBuffer2 = setupSourceVoice( waveFmt2,
@@ -57,7 +66,6 @@ int main()
 	XAUDIO2_BUFFER xaudioBuffer3 = {0};
 	WAVEFORMATEXTENSIBLE waveFmt3 = {0};
 	BYTE* pDataBuffer3 = nullptr;
-	const wchar_t* zsFilename3 = L"assets\\sfx\\Anthrax - I am the Law.wav";
 	IXAudio2SourceVoice* pSourceVoice3 = nullptr;
 	
 	pDataBuffer3 = setupSourceVoice( waveFmt3,

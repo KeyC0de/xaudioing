@@ -17,7 +17,7 @@ extern bool assertPrint( const wchar_t* expr,
 	const wchar_t* function,
 	const wchar_t* msg );
 
-// if expression ( arg ) is equal to 0/nullptr/NULL/print assert print the error
+// assert that arg is true, if not print error
 #		define ASSERT( arg, msg ) (!( arg ) \
 			&& assertPrint( STRINGIFY( arg ),\
 				__FILEW__,\
@@ -32,7 +32,7 @@ extern bool assertPrint( const char* expr,
 	const char* function,
 	const char* msg );
 
-// if expression ( arg ) is equal to 0/nullptr/NULL/print assert print the error
+// assert that arg is true, if not print error
 #		define ASSERT( arg, msg ) (!(arg) \
 			&& assertPrint( STRINGIFY( arg ),\
 				__FILE__,\
