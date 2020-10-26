@@ -15,6 +15,16 @@
 namespace mwrl = Microsoft::WRL;
 
 
+namespace sound_wave_properties
+{
+	// wav properties - all sounds must have the same format
+	static constexpr WORD nChannelsPerSound = 2u;
+	static constexpr DWORD nSamplesPerSec = 48000u;	// valid: 44100u, 48000u, 96000u
+	static constexpr WORD nBitsPerSample = 16u;
+
+}// sound_wave_properties
+
+
 SoundManager::Channel::Channel()
 {
 }
@@ -27,6 +37,23 @@ SoundManager::Channel::~Channel() noexcept
 	m_pSourceVoice = nullptr;
 }
 
+SoundManager::Channel::Channel( Channel&& rhs )
+	:
+	m_pSourceVoice{ rhs.m_pSourceVoice },
+	m_pSound{ std::move( rhs.m_pSound ) }
+{
+	rhs.m_pSourceVoice = nullptr;
+}
+		
+auto SoundManager::Channel::operator=( Channel&& rhs ) -> Channel&
+{
+	if ( this != &rhs )
+	{
+		std::swap( *this, rhs );
+	}
+	return *this;
+}
+
 void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	Sound& sound )
 {
@@ -36,7 +63,7 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 		// Called when the voice is about to start processing a new audio buffer.
 		void STDMETHODCALLTYPE OnBufferStart( void* pBufferContext ) override
 		{
-			pass
+			pass;
 		}
 		// Called when the voice finishes processing a buffer.
 		void STDMETHODCALLTYPE OnBufferEnd( void* pBufferContext ) override
@@ -50,8 +77,10 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 						channel.m_pSound->m_busyChannels.end(),
 						&channel ) );
 				//removeByBackSwap( channel.m_pSound->m_busyChannels, &channel );
-				channel.m_pSound->m_busyChannels.erase(std::find(
-					channel.m_pSound->m_busyChannels.begin(),channel.m_pSound->m_busyChannels.end(), &channel));
+				channel.m_pSound->m_busyChannels.erase(
+					std::find( channel.m_pSound->m_busyChannels.begin(),
+						channel.m_pSound->m_busyChannels.end(),
+						&channel ) );
 				// notify any thread that might be waiting for activeChannels
 				// to become zero (i.e. thread calling destructor)
 				channel.m_pSound->m_condVar.notify_all();
@@ -62,28 +91,28 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 		// Called when the voice reaches the end position of a loop.
 		void STDMETHODCALLTYPE OnLoopEnd( void* pBufferContext ) override
 		{
-			pass
+			pass;
 		}
 		// Called when the voice has just finished playing a contiguous audio stream.
 		void STDMETHODCALLTYPE OnStreamEnd() override
 		{
-			pass
+			pass;
 		}
 		// Called when a critical error occurs during voice processing.
 		void STDMETHODCALLTYPE OnVoiceError( void* pBufferContext, HRESULT Error )
 			override
 		{
-			pass
+			pass;
 		}
 		// Called just after the processing pass for the voice ends.
 		void STDMETHODCALLTYPE OnVoiceProcessingPassEnd() override
 		{
-			pass
+			pass;
 		}
 		// Called during each processing pass for each voice, just 
 		void STDMETHODCALLTYPE OnVoiceProcessingPassStart( UINT32 bytesRequired ) override
 		{
-			pass
+			pass;
 		}
 	};
 
@@ -91,7 +120,8 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	ZeroMemory( &voiceCallback, sizeof( VoiceCallback ) );
 	HRESULT hres;
 
-	sound.m_pXaudioBuffer->pContext = this;
+	m_pSound.reset( &sound );
+	m_pSound->m_pXaudioBuffer->pContext = this;
 
 	// 5. optional - specify an output (submix) voice for this source voice
 	UINT32 sourceVoiceCreationFlags = 0u;
@@ -112,7 +142,7 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	//else {
 		// 6. Create the source voice
 		hres = soundManager.m_pXAudio2->CreateSourceVoice( &m_pSourceVoice,
-			(WAVEFORMATEX*)&m_pSound->m_pWaveFormat,
+			(WAVEFORMATEX*)m_pSound->m_pWaveFormat.get(),
 			sourceVoiceCreationFlags,
 			XAUDIO2_DEFAULT_FREQ_RATIO,
 			&voiceCallback,
@@ -148,7 +178,7 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 
 	// 6. submit the XAUDIO2_BUFFER to the source voice
 	hres = m_pSourceVoice->SubmitSourceBuffer( m_pSound->m_pXaudioBuffer.get() );
-	ASSERT_HRES_IF_FAILED( hres );
+	ASSERT_HRES_IF_FAILED;
 }
 
 void SoundManager::Channel::playSound( Sound* sound,
@@ -198,7 +228,7 @@ void SoundManager::Channel::rechannel( const Sound* pOldSound, Sound* pNewSound 
 
 Sound* SoundManager::Channel::getSound() const
 {
-	ASSERT( m_pSound, L"Sound is good to go!" );
+	ASSERT( m_pSound, L"Sound is null!" );
 	return m_pSound.get();
 }
 
@@ -224,28 +254,23 @@ void SoundManager::setMasterVolume( float volume )
 	m_pMasterVoice->SetVolume( volume );
 }
 
-void SoundManager::playChannelSound( Sound* sound,
+void SoundManager::playChannelSound( class Sound* sound,
 	float volume,
 	float freqRatio )
 {
 	std::unique_lock<std::mutex> ul{ m_mu };
-	if ( !m_idleChannels.empty() )
+	if ( !m_idleChannels.empty()
+		&& m_occupiedChannels.size() < nMaxAudioChannels )
 	{
-		for ( int i = 0; i < m_idleChannels.size(); ++i )
-		{
-			// go through channels to find the one we want to play
-			auto& channel = m_idleChannels[i];
-			if ( channel->getSound() == sound )
-			{
-				channel->setupChannel( *this, *sound );
-				m_occupiedChannels.emplace_back( std::move( channel ) );
-				removeByBackSwap( m_idleChannels, i );
-				m_occupiedChannels.back()->playSound( sound,
-					volume,
-					freqRatio );
-				break;
-			}
-		}
+		auto& channel = m_idleChannels.back();
+		channel->setupChannel( *this, *sound );
+		m_occupiedChannels.emplace_back( std::move( channel ) );
+		m_idleChannels.pop_back();
+		//removeByBackSwap( m_idleChannels,
+		//	getIndexOfBack( m_idleChannels ) );
+		m_occupiedChannels.back()->playSound( sound,
+			volume,
+			freqRatio );
 	}
 }
 
@@ -404,6 +429,7 @@ Sound::Sound( const wchar_t* zsFilename,
 	const std::wstring& defaultName,
 	const std::wstring& defaultSubmixName )
 	:
+	m_name{ defaultName },
 	// Initialize wave format and audio buffer
 	m_pWaveFormat{ std::make_unique<WAVEFORMATEXTENSIBLE>() },
 	m_pXaudioBuffer{ std::make_unique<XAUDIO2_BUFFER>() }
@@ -462,7 +488,7 @@ Sound::Sound( const wchar_t* zsFilename,
 	ASSERT_HRES_IF_FAILED;
 	
 	hres = readChunkData( file,
-		&m_pWaveFormat,
+		m_pWaveFormat.get(),
 		chunkSize,
 		chunkPosition );
 	ASSERT_HRES_IF_FAILED;
@@ -477,7 +503,7 @@ Sound::Sound( const wchar_t* zsFilename,
 	//std::wcout << chunkSize << L'\n';
 	m_audioData = std::make_unique<BYTE[]>( chunkSize );
 	hres = readChunkData( file,
-		&m_audioData,
+		m_audioData.get(),
 		chunkSize,
 		chunkPosition );
 	ASSERT_HRES_IF_FAILED;
@@ -540,7 +566,7 @@ std::wstring Sound::getTypeName() const
 }
 
 void Sound::play( float volume,
-	float freqRatio)
+	float freqRatio )
 {
 	SoundManager::getInstance( m_pWaveFormat.get() )
 		.playChannelSound( this,

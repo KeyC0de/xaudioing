@@ -16,14 +16,6 @@
 #include <x3daudio.h>
 //typedef struct WAVEFORMATEXTENSIBLE;
 
-namespace sound_wave_properties
-{
-	// wav properties - all sounds must have the same format
-	static constexpr WORD nChannelsPerSound = 2u;
-	static constexpr DWORD nSamplesPerSec = 48000u;	// valid: 44100u, 48000u, 96000u
-	static constexpr WORD nBitsPerSample = 16u;
-}
-
 //============================================================
 //	\class	SoundManager
 //
@@ -57,10 +49,12 @@ public:
 		Channel( const Channel& rhs ) = delete;
 		Channel& operator=( const Channel& rhs ) = delete;
 		~Channel() noexcept;
-		
+		Channel( Channel&& rhs ) cond_noex;
+		Channel& operator=( Channel&& rhs ) cond_noex;
+
 		void setupChannel( SoundManager& soundManager, class Sound& sound );
 		void playSound( class Sound* sound, float volume, float freqRatio );
-		void stopSound();
+		void stopSound() cond_noex;
 		//===================================================
 		//	\function	rechannel
 		//	\brief  finds new channel for the existing Sound
@@ -122,7 +116,7 @@ private:
 	std::vector<std::unique_ptr<Channel>> m_idleChannels;
 	//std::vector<std::unique_ptr<SubmixType>> m_submixTypes;
 
-	static constexpr size_t nMaxAudioChannels = 64u;
+	static inline constexpr size_t nMaxAudioChannels = 64u;
 };
 
 
@@ -146,13 +140,15 @@ public:
 	//	\function	findChunk
 	//	\brief  locates chunks in RIFF files
 	//	\date	2020/10/25 15:09
-	static HRESULT findChunk( HANDLE file, DWORD fourcc, DWORD& chunkSize,
+	HRESULT findChunk( HANDLE file, DWORD fourcc, DWORD& chunkSize,
 		DWORD& chunkDataPosition );
 	//===================================================
 	//	\function	readChunkData
 	//	\brief  read chunk's data (after the chunk has been located)
 	//	\date	2020/10/21 17:37
-	static HRESULT readChunkData( HANDLE file, void* buffer, DWORD buffersize,
+	HRESULT readChunkData( HANDLE file,
+		void* buffer,
+		DWORD buffersize,
 		DWORD bufferoffset );
 public:
 	// TODO: Sound Looping

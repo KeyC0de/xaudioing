@@ -8,6 +8,8 @@ int main()
 	const wchar_t* zsFilename1 = L"assets\\sfx\\ARNOLD_i'll_be_back.wav";
 	Sound arnie{ zsFilename1, L"Arnie" };
 
+	arnie.play();
+
 	std::system( "pause" );
 
 	/*

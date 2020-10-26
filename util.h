@@ -41,8 +41,9 @@ void removeByBackSwap( std::vector<typename T>& v, std::size_t index )
 	v.pop_back();
 }
 
-template<typename T>
-void removeByBackSwap( std::vector<T>& v, const T& element )
+template<class Container>
+inline std::size_t getIndexOfBack( Container& t )
 {
-	v.erase( std::find( v.begin(), v.end(), &element ) );
+	return t.size() - 1;
 }
+
