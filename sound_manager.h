@@ -5,16 +5,14 @@
 #include <mutex>
 #include <condition_variable>
 #include <string>
-
 #include <wrl\client.h>
-
-#define cond_noex noexcept( !BDEBUG )
-
 #include <xaudio2.h>
 //#include <xaudio2fx.h>
 //#include <xapofx.h>
 #include <x3daudio.h>
-//typedef struct WAVEFORMATEXTENSIBLE;
+
+#define cond_noex noexcept( !BDEBUG )
+
 
 //============================================================
 //	\class	SoundManager
@@ -62,7 +60,7 @@ public:
 		void rechannel( const class Sound* pOldSound, class Sound* pNewSound );
 		class Sound* getSound() const cond_noex;
 	private:
-		IXAudio2SourceVoice* m_pSourceVoice = nullptr;
+		struct IXAudio2SourceVoice* m_pSourceVoice = nullptr;
 		class Sound* m_pSound;
 	};
 
@@ -107,8 +105,8 @@ private:
 private:
 	WAVEFORMATEXTENSIBLE* m_pFormat;
 
-	Microsoft::WRL::ComPtr<IXAudio2> m_pXAudio2;
-	IXAudio2MasteringVoice* m_pMasterVoice = nullptr;
+	Microsoft::WRL::ComPtr<struct IXAudio2> m_pXAudio2;
+	struct IXAudio2MasteringVoice* m_pMasterVoice = nullptr;
 	std::mutex m_mu;
 	std::vector<std::unique_ptr<Channel>> m_occupiedChannels;
 	std::vector<std::unique_ptr<Channel>> m_idleChannels;
@@ -176,7 +174,7 @@ private:
 	std::wstring m_name;
 	std::unique_ptr<BYTE[]> m_audioData;
 	std::unique_ptr<WAVEFORMATEXTENSIBLE> m_pWaveFormat;
-	std::unique_ptr<XAUDIO2_BUFFER> m_pXaudioBuffer;
+	std::unique_ptr<struct XAUDIO2_BUFFER> m_pXaudioBuffer;
 	std::mutex m_mu;
 	std::condition_variable m_condVar;
 	std::vector<SoundManager::Channel*> m_busyChannels;	// those are currently playing

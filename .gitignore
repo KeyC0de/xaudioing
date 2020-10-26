@@ -262,3 +262,7 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+
+# exclude specific files
+xaudio2_complete_barebones_test.cpp
+xaudio2_x3daudio_complete_barebones_test.cpp

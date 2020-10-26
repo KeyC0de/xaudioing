@@ -1,10 +1,10 @@
 #pragma once
 
+#include <vector>
 #include <string>
+#include <algorithm>
 #include "com_initializer.h"
 #include <comdef.h>
-#include <vector>
-#include <algorithm>
 
 #define pass (void)0;
 
