@@ -2,7 +2,7 @@
 
 #include "winner.h"
 
-#ifdef _DEBUG
+#if defined _DEBUG && !defined _NDEBUG
 
 #	ifdef __cplusplus
 extern "C" {

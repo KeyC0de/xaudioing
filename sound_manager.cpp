@@ -32,7 +32,7 @@ SoundManager::Channel::~Channel() noexcept
 	}
 }
 
-SoundManager::Channel::Channel( Channel&& rhs )
+SoundManager::Channel::Channel( Channel&& rhs ) cond_noex
 	:
 	m_pSourceVoice{ rhs.m_pSourceVoice },
 	m_pSound{ std::move( rhs.m_pSound ) }
@@ -40,7 +40,7 @@ SoundManager::Channel::Channel( Channel&& rhs )
 	rhs.m_pSourceVoice = nullptr;
 }
 		
-auto SoundManager::Channel::operator=( Channel&& rhs ) -> Channel&
+auto SoundManager::Channel::operator=( Channel&& rhs ) cond_noex -> Channel&
 {
 	if ( this != &rhs )
 	{
@@ -185,7 +185,7 @@ void SoundManager::Channel::playSound( Sound* sound,
 	ASSERT_HRES_IF_FAILED;
 }
 
-void SoundManager::Channel::stopSound()
+void SoundManager::Channel::stopSound() cond_noex
 {
 	ASSERT( m_pSound, L"Sound was not initialized!" );
 	ASSERT( m_pSourceVoice, L"Voice was not set!" );
@@ -199,7 +199,7 @@ void SoundManager::Channel::rechannel( const Sound* pOldSound, Sound* pNewSound 
 	m_pSound = pNewSound;
 }
 
-Sound* SoundManager::Channel::getSound() const
+Sound* SoundManager::Channel::getSound() const cond_noex
 {
 	ASSERT( m_pSound, L"Sound is null!" );
 	return m_pSound;
@@ -486,7 +486,7 @@ Sound::Sound( const wchar_t* zsFilename,
 	m_pXaudioBuffer->Flags = XAUDIO2_END_OF_STREAM;
 }
 
-Sound::Sound( Sound&& rhs )
+Sound::Sound( Sound&& rhs ) cond_noex
 	:
 	m_name{ std::move( rhs.m_name ) }
 {
@@ -503,7 +503,7 @@ Sound::Sound( Sound&& rhs )
 	rhs.m_condVar.notify_all();
 }
 
-Sound& Sound::operator=( Sound&& rhs )
+Sound& Sound::operator=( Sound&& rhs ) cond_noex
 {
 	if ( this != &rhs )
 	{
@@ -527,12 +527,12 @@ Sound::~Sound() noexcept
 	}
 }
 
-std::wstring Sound::getName() const
+std::wstring Sound::getName() const cond_noex
 {
 	return m_name;
 }
 
-std::wstring Sound::getTypeName() const
+std::wstring Sound::getTypeName() const cond_noex
 {
 	return std::wstring();
 }

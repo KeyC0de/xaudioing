@@ -8,7 +8,7 @@
 
 #include <wrl\client.h>
 
-#define cond_noex noexcept( !_IS_DEBUG )
+#define cond_noex noexcept( !BDEBUG )
 
 #include <xaudio2.h>
 //#include <xaudio2fx.h>

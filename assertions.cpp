@@ -1,7 +1,7 @@
 #include "assertions.h"
 #include <iostream>
 
-#if defined( _DEBUG )
+#if defined _DEBUG && !defined _NDEBUG
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +36,7 @@ bool assertPrint( const wchar_t* expr,
 }
 
 #else
+
 // just builds the error string
 bool assertPrint( const char* expr,
 	const char* file,
