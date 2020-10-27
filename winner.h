@@ -116,5 +116,3 @@ static_assert( false, "Non Windows Platform - Nah huh\n" );
 #		define __function__ __func__
 #	endif
 #endif
-
-

@@ -112,57 +112,75 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	m_pSound->m_pXaudioBuffer->pContext = this;
 
 	HRESULT hres;
-	// 5. optional - specify an output (submix) voice for this source voice
 	UINT32 sourceVoiceCreationFlags = 0u;
-	//if ( pSubmixVoice )
-	//{
-	//	//  create the voice sends structure to specify for the source voice
-	//	XAUDIO2_SEND_DESCRIPTOR outputVoiceSendDesc = { 0, pSubmixVoice };
-	//	XAUDIO2_VOICE_SENDS outputVoiceSends = { 1, &outputVoiceSendDesc };
-	//	// 6. Create the source voice
-	//	hres = pXaudio2->CreateSourceVoice( &pSourceVoice,
-	//		(WAVEFORMATEX*)&waveFmt,
-	//		sourceVoiceCreationFlags,
-	//		XAUDIO2_DEFAULT_FREQ_RATIO,
-	//		nullptr,
-	//		&outputVoiceSends,
-	//		nullptr );
-	//}
-	//else {
+
+	auto& waveFormat = m_pSound->m_pWaveFormat;
+
+	// 5. optional - specify an output (submix) voice for this source voice
+	const auto& soundSubmixName = sound.getSubmixName();
+	if ( soundSubmixName != L"" )
+	{
+		// already locked!
+		//std::unique_lock<std::mutex> lg{ soundManager.m_mu, std::try_to_lock };
+		// grab a submix from the bag and fill it up
+		auto& newSubmix = soundManager.m_submixes.back();
+		newSubmix->setName( soundSubmixName );
+
+		ASSERT( waveFormat->Format.nChannels
+			== sound_wave_properties::nChannelsPerSound,
+				L"Wrong amount of channels per sound!" );
+		soundManager.m_pXAudio2->CreateSubmixVoice( &newSubmix->m_pSubmixVoice,
+			waveFormat->Format.nChannels,
+			waveFormat->Format.nSamplesPerSec,
+			0u,
+			0u,
+			nullptr,
+			nullptr );
+
+		//  create the voice sends structure
+		newSubmix->m_outputVoiceSendDesc = { 0, newSubmix->m_pSubmixVoice };
+		newSubmix->m_outputVoiceSends = { 1, &newSubmix->m_outputVoiceSendDesc };	
 		// 6. Create the source voice
 		hres = soundManager.m_pXAudio2->CreateSourceVoice( &m_pSourceVoice,
-			(WAVEFORMATEX*)m_pSound->m_pWaveFormat.get(),
+			(WAVEFORMATEX*)waveFormat.get(),
+			sourceVoiceCreationFlags,
+			XAUDIO2_DEFAULT_FREQ_RATIO,
+			&voiceCallback,
+			&newSubmix->m_outputVoiceSends,
+			nullptr );
+	}
+	else {
+		// 6. Create the source voice
+		hres = soundManager.m_pXAudio2->CreateSourceVoice( &m_pSourceVoice,
+			(WAVEFORMATEX*)waveFormat.get(),
 			sourceVoiceCreationFlags,
 			XAUDIO2_DEFAULT_FREQ_RATIO,
 			&voiceCallback,
 			nullptr,
 			nullptr );
-	//}
+	}
 	ASSERT_HRES_IF_FAILED;
 
 	// set steady sample rate
-	if ( m_pSound->m_pWaveFormat->Format.nSamplesPerSec 
+	if ( waveFormat->Format.nSamplesPerSec 
 		!= sound_wave_properties::nSamplesPerSec )
 	{
-		m_pSound->m_pWaveFormat->Format.nSamplesPerSec 
+		waveFormat->Format.nSamplesPerSec 
 			= sound_wave_properties::nSamplesPerSec;
 		hres = m_pSourceVoice->SetSourceSampleRate(
 			sound_wave_properties::nSamplesPerSec );
 		ASSERT_HRES_IF_FAILED;
 	}
 
-	ASSERT( m_pSound->m_pWaveFormat->Format.wFormatTag == WAVE_FORMAT_PCM,
+	ASSERT( waveFormat->Format.wFormatTag == WAVE_FORMAT_PCM,
 				L"Only XPCM technique allowed!" );
-	ASSERT( m_pSound->m_pWaveFormat->Format.wBitsPerSample
+	ASSERT( waveFormat->Format.wBitsPerSample
 			== sound_wave_properties::nBitsPerSample,
 				L"Wrong bits per sample!" );
-	ASSERT( m_pSound->m_pWaveFormat->Format.nChannels
-			== sound_wave_properties::nChannelsPerSound,
-				L"Wrong amount of channels per sound!" );
-	ASSERT( m_pSound->m_pWaveFormat->Format.nSamplesPerSec
+	ASSERT( waveFormat->Format.nSamplesPerSec
 			== sound_wave_properties::nSamplesPerSec,
 				L"Wrong number of samples per second!" );
-	ASSERT( m_pSound->m_pWaveFormat->Format.cbSize == 0,
+	ASSERT( waveFormat->Format.cbSize == 0,
 				L"No extra Format information allowed" );
 
 	// 6. submit the XAUDIO2_BUFFER to the source voice
@@ -175,8 +193,11 @@ void SoundManager::Channel::playSound( Sound* sound,
 {
 	ASSERT( m_pSound, L"Null Sound!" );
 	ASSERT( m_pSourceVoice, L"Null Voice!" );
-	std::unique_lock<std::mutex> ul{ sound->m_mu };
-	sound->m_busyChannels.emplace_back( this );
+
+	{
+		std::lock_guard<std::mutex> ul{ sound->m_mu };
+		sound->m_busyChannels.emplace_back( this );
+	}
 
 	HRESULT hres = m_pSourceVoice->SetVolume( volume );
 	ASSERT_HRES_IF_FAILED;
@@ -215,6 +236,7 @@ SoundManager::~SoundManager() noexcept
 	std::unique_lock<std::mutex> ul{ m_mu };
 	m_occupiedChannels.clear();
 	m_idleChannels.clear();
+	m_submixes.clear();
 	m_pMasterVoice->DestroyVoice();
 	m_pMasterVoice = nullptr;
 }
@@ -277,6 +299,11 @@ SoundManager::SoundManager( WAVEFORMATEXTENSIBLE* format )
 	for ( size_t i = 0; i < nMaxAudioChannels; ++i )
 	{
 		m_idleChannels.emplace_back( std::make_unique<Channel>() );
+	}
+	m_submixes.reserve( nMaxSubmixes );
+	for ( size_t i = 0; i < nMaxSubmixes; ++i )
+	{
+		m_submixes.emplace_back( std::make_unique<SubmixType>() );
 	}
 }
 
@@ -401,6 +428,7 @@ Sound::Sound( const wchar_t* zsFilename,
 	const std::wstring& defaultSubmixName )
 	:
 	m_name{ defaultName },
+	m_submixName{ defaultSubmixName },
 	// Initialize wave format and audio buffer
 	m_pWaveFormat{ std::make_unique<WAVEFORMATEXTENSIBLE>() },
 	m_pXaudioBuffer{ std::make_unique<XAUDIO2_BUFFER>() }
@@ -487,7 +515,8 @@ Sound::Sound( const wchar_t* zsFilename,
 
 Sound::Sound( Sound&& rhs ) cond_noex
 	:
-	m_name{ std::move( rhs.m_name ) }
+	m_name{ std::move( rhs.m_name ) },
+	m_submixName{ std::move( rhs.m_submixName ) }
 {
 	// lock the rhs mutex before we copy/move to guard from 
 	std::unique_lock<std::mutex> ulr{ rhs.m_mu, std::defer_lock };
@@ -531,9 +560,9 @@ std::wstring Sound::getName() const cond_noex
 	return m_name;
 }
 
-std::wstring Sound::getTypeName() const cond_noex
+std::wstring Sound::getSubmixName() const cond_noex
 {
-	return std::wstring();
+	return m_submixName;
 }
 
 void Sound::play( float volume )
@@ -553,4 +582,73 @@ void Sound::stop()
 			channel->stopSound();
 		}
 	}
+	//if ( m_submixName != L"" )
+	//{
+	//
+	//}
+}
+
+SoundManager::SubmixType::SubmixType( const std::wstring& name )
+	:
+	m_name{ name },
+	m_outputVoiceSendDesc{ 0 },
+	m_outputVoiceSends{ 0 }
+{
+}
+
+SoundManager::SubmixType::~SubmixType() noexcept
+{
+	if ( m_pSubmixVoice )
+	{
+		m_pSubmixVoice->DestroyVoice();
+		m_pSubmixVoice = nullptr;
+	}
+}
+
+std::wstring SoundManager::SubmixType::getName() const cond_noex
+{
+	return m_name;
+}
+
+void SoundManager::SubmixType::setName( const std::wstring& name ) cond_noex
+{
+	m_name = name;
+}
+
+void SoundManager::setSubmixVolume( const SubmixType& submix, float volume ) cond_noex
+{
+	std::lock_guard<std::mutex> lg{ m_mu };
+	for ( const auto& s : m_submixes )
+	{
+		if ( s->getName() == submix.getName() )
+		{
+			s->setVolume( volume );
+		}
+	}
+}
+
+void SoundManager::SubmixType::setVolume( float volume ) cond_noex
+{
+	m_pSubmixVoice->SetVolume( volume );
+}
+
+SoundManager::SubmixType::SubmixType( SubmixType&& rhs ) cond_noex
+	:
+	m_name{ std::move( rhs.m_name ) },
+	m_outputVoiceSendDesc{ std::move( rhs.m_outputVoiceSendDesc ) },
+	m_outputVoiceSends{ std::move( rhs.m_outputVoiceSends ) },
+	m_pSubmixVoice{ std::move( rhs.m_pSubmixVoice ) }
+{
+	rhs.m_name = L"";
+	rhs.m_pSubmixVoice = nullptr;
+}
+
+SoundManager::SubmixType& SoundManager::SubmixType::operator=( SubmixType&& rhs )
+	cond_noex
+{
+	if ( this != &rhs )
+	{
+		std::swap( *this, rhs );
+	}
+	return *this;
 }

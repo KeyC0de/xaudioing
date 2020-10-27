@@ -22,6 +22,7 @@
 //
 //	\brief	singleton class
 //			back-end
+//			non-copyable & non-movable
 //			stores the Sounds in vector of Channel<Sound>>s
 //			encapsulates a Mastering voice which works with a single wave format
 //			thus all Sounds contained in a SoundManager object must have the same format
@@ -64,20 +65,26 @@ public:
 		class Sound* m_pSound;
 	};
 
-	//class SubmixType final
-	//{
-	//public:
-	//	SubmixType();
-	//	~SubmixType() noexcept;
-	//
-	//	std::wstring getName() const cond_noex;
-	//private:
-	//	std::wstring name;
-	//	class IXAudio2SubmixVoice* m_pSubmixVoice = nullptr;
-	//	//  create the voice sends structure to specify for the source voice
-	//	XAUDIO2_SEND_DESCRIPTOR m_outputVoiceSendDesc;
-	//	XAUDIO2_VOICE_SENDS m_outputVoiceSends;
-	//};
+	class SubmixType final
+	{
+		friend class Channel;
+	public:
+		SubmixType( const std::wstring& name = L"" );
+		~SubmixType() noexcept;
+		SubmixType( const SubmixType& rhs ) = delete;
+		SubmixType& operator=( const SubmixType& rhs ) = delete;
+		SubmixType( SubmixType&& rhs ) cond_noex;
+		SubmixType& operator=( SubmixType&& rhs ) cond_noex;
+	
+		std::wstring getName() const cond_noex;
+		void setName( const std::wstring& name ) cond_noex;
+		void setVolume( float volume = 1.0f ) cond_noex;
+	private:
+		std::wstring m_name;
+		XAUDIO2_SEND_DESCRIPTOR m_outputVoiceSendDesc;
+		XAUDIO2_VOICE_SENDS m_outputVoiceSends;
+		struct IXAudio2SubmixVoice* m_pSubmixVoice = nullptr;
+	};
 public:
 	//===================================================
 	//	\function	getInstance
@@ -87,12 +94,12 @@ public:
 public:
 	SoundManager( const SoundManager& rhs ) = delete;
 	SoundManager& operator=( const SoundManager& rhs ) = delete;
-	//SoundManager( SoundManager&& rhs ) = delete;
-	//SoundManager& operator=( SoundManager&& rhs ) = delete;
+	SoundManager( SoundManager&& rhs ) = delete;
+	SoundManager& operator=( SoundManager&& rhs ) = delete;
 	~SoundManager() noexcept;
 
-	void setMasterVolume( float volume );
-	//void setSubmixVolume( float volume, const SubmixType& submix );
+	void setMasterVolume( float volume = 1.0f );
+	void setSubmixVolume( const SubmixType& submix, float volume = 1.0f ) cond_noex;
 	void playChannelSound( class Sound* sound, float volume );
 	//===================================================
 	//	\function	rearrangeChannels
@@ -110,9 +117,10 @@ private:
 	std::mutex m_mu;
 	std::vector<std::unique_ptr<Channel>> m_occupiedChannels;
 	std::vector<std::unique_ptr<Channel>> m_idleChannels;
-	//std::vector<std::unique_ptr<SubmixType>> m_submixTypes;
+	std::vector<std::unique_ptr<SubmixType>> m_submixes;
 
 	static inline constexpr size_t nMaxAudioChannels = 64u;
+	static inline constexpr size_t nMaxSubmixes = 8u;
 };
 
 
@@ -167,11 +175,12 @@ public:
 	//	\brief  get sound type eg effects, music, dialogue etc
 	//			each sound type corresponds to a Submix voice
 	//	\date	2020/10/25 14:05
-	std::wstring getTypeName() const cond_noex;
+	std::wstring getSubmixName() const cond_noex;
 	void play( float volume = 1.0f );
 	void stop();
 private:
 	std::wstring m_name;
+	std::wstring m_submixName;
 	std::unique_ptr<BYTE[]> m_audioData;
 	std::unique_ptr<WAVEFORMATEXTENSIBLE> m_pWaveFormat;
 	std::unique_ptr<struct XAUDIO2_BUFFER> m_pXaudioBuffer;
