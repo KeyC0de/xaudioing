@@ -1,5 +1,4 @@
 #include "winner.h"
-#include <algorithm>
 #include "sound_manager.h"
 #include "assertions.h"
 #include "util.h"
