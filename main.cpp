@@ -23,7 +23,8 @@ int main()
 	anthraxImTheLaw.play();
 	
 	ambience.stop();
-	//ambience.play(.25f); - playing after stop doesn't work though
+	// playing after stop doesn't work though:
+	//ambience.play(.25f);
 
 
 	// 4,5
