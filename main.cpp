@@ -10,7 +10,7 @@ int main()
 	// 1.
 	const wchar_t* zsFilename1 = L"assets\\sfx\\ARNOLD_i'll_be_back.wav";
 	const wchar_t* zsFilename2 = L"assets\\sfx\\AmbientCity_TypeB02.wav";
-	const wchar_t* zsFilename3 = L"assets\\sfx\\Anthrax - I am the Law.wav";
+	const wchar_t* zsFilename3 = L"assets\\sfx\\CARTOON_BOING_3.wav";
 	Sound arnie{ zsFilename1, L"Arnie", L"sfx" };
 
 	arnie.play();
@@ -19,7 +19,7 @@ int main()
 	Sound ambience{ zsFilename2, L"City Ambience", L"sfx" };
 	ambience.play( .1f );
 	// 3.
-	Sound anthraxImTheLaw{ zsFilename3, L"Anthrax - I am the Law", L"music" };
+	Sound anthraxImTheLaw{ zsFilename3, L"CARTOON_BOING_3", L"music" };
 	anthraxImTheLaw.play();
 	
 	ambience.stop();
