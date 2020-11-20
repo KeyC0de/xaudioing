@@ -1,5 +1,5 @@
 <h1 align="center">
-	<a href="https://github.com/KeyC0de/MathHandbook_Latex">XAudioing</a>
+	<a href="https://github.com/KeyC0de/xaudioing">XAudioing</a>
 </h1>
 <hr>
 
