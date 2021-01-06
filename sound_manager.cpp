@@ -329,74 +329,74 @@ HRESULT Sound::findChunk( HANDLE file,
 	DWORD& chunkSize,
 	DWORD& chunkDataPosition )
 {
-    HRESULT hr = S_OK;
-    if ( INVALID_SET_FILE_POINTER == SetFilePointer( file,
+	HRESULT hr = S_OK;
+	if ( INVALID_SET_FILE_POINTER == SetFilePointer( file,
 		0,
 		nullptr,
 		FILE_BEGIN ) )
-        return HRESULT_FROM_WIN32( GetLastError() );
+		return HRESULT_FROM_WIN32( GetLastError() );
 
-    DWORD chunkType;
-    DWORD chunkDataSize;
-    DWORD RIFFDataSize = 0;
-    DWORD fileType;
-    DWORD bytesRead = 0;
-    DWORD fileOffset = 0;
+	DWORD chunkType;
+	DWORD chunkDataSize;
+	DWORD RIFFDataSize = 0;
+	DWORD fileType;
+	DWORD bytesRead = 0;
+	DWORD fileOffset = 0;
 
-    while ( hr == S_OK )
-    {
-        DWORD bytesRead;
-        if ( 0 == ReadFile( file,
+	while ( hr == S_OK )
+	{
+		DWORD bytesRead;
+		if ( 0 == ReadFile( file,
 			&chunkType,
 			sizeof( DWORD ),
 			&bytesRead,
 			nullptr ) )
-            hr = HRESULT_FROM_WIN32( GetLastError() );
+			hr = HRESULT_FROM_WIN32( GetLastError() );
 
-        if ( 0 == ReadFile( file,
+		if ( 0 == ReadFile( file,
 			&chunkDataSize,
 			sizeof( DWORD ),
 			&bytesRead,
 			nullptr ) )
-            hr = HRESULT_FROM_WIN32( GetLastError() );
+			hr = HRESULT_FROM_WIN32( GetLastError() );
 
-        switch ( chunkType )
-        {
-        case fourccRIFF:
-            RIFFDataSize = chunkDataSize;
-            chunkDataSize = 4;
-            if ( 0 == ReadFile( file,
+		switch ( chunkType )
+		{
+		case fourccRIFF:
+			RIFFDataSize = chunkDataSize;
+			chunkDataSize = 4;
+			if ( 0 == ReadFile( file,
 				&fileType,
 				sizeof( DWORD ),
 				&bytesRead,
 				nullptr ) )
-                hr = HRESULT_FROM_WIN32( GetLastError() );
-            break;
+				hr = HRESULT_FROM_WIN32( GetLastError() );
+			break;
 
-        default:
-            if ( INVALID_SET_FILE_POINTER == SetFilePointer( file, //-V303
+		default:
+			if ( INVALID_SET_FILE_POINTER == SetFilePointer( file, //-V303
 				chunkDataSize,
 				nullptr,
 				FILE_CURRENT ) )
-            return HRESULT_FROM_WIN32( GetLastError() );            
-        }
+			return HRESULT_FROM_WIN32( GetLastError() );            
+		}
 
-        fileOffset += sizeof( DWORD ) * 2;
+		fileOffset += sizeof( DWORD ) * 2;
 
-        if ( chunkType == fourcc )
-        {
-            chunkSize = chunkDataSize;
-            chunkDataPosition = fileOffset;
-            return S_OK;
-        }
+		if ( chunkType == fourcc )
+		{
+			chunkSize = chunkDataSize;
+			chunkDataPosition = fileOffset;
+			return S_OK;
+		}
 
-        fileOffset += chunkDataSize;
+		fileOffset += chunkDataSize;
 
-        if ( bytesRead >= RIFFDataSize )
+		if ( bytesRead >= RIFFDataSize )
 			return S_FALSE;
-    }
+	}
 
-    return S_OK;
+	return S_OK;
 }
 
 HRESULT Sound::readChunkData( HANDLE file,
@@ -404,20 +404,20 @@ HRESULT Sound::readChunkData( HANDLE file,
 	DWORD buffersize,
 	DWORD bufferoffset )
 {
-    HRESULT hr = S_OK;
-    if ( INVALID_SET_FILE_POINTER == SetFilePointer( file, //-V303
+	HRESULT hr = S_OK;
+	if ( INVALID_SET_FILE_POINTER == SetFilePointer( file, //-V303
 		bufferoffset,
 		nullptr,
 		FILE_BEGIN ) )
-        return HRESULT_FROM_WIN32( GetLastError() );
-    DWORD bytesRead;
-    if ( 0 == ReadFile( file,
+		return HRESULT_FROM_WIN32( GetLastError() );
+	DWORD bytesRead;
+	if ( 0 == ReadFile( file,
 		buffer,
 		buffersize,
 		&bytesRead,
 		nullptr ) )
-        hr = HRESULT_FROM_WIN32( GetLastError() );
-    return hr;
+		hr = HRESULT_FROM_WIN32( GetLastError() );
+	return hr;
 }
 
 #pragma endregion

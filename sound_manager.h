@@ -13,7 +13,7 @@
 
 #define cond_noex noexcept( !BDEBUG )
 
-                                                                                          
+																						  
 //============================================================
 //	\class	SoundManager
 //
