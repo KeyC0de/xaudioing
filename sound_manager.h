@@ -69,18 +69,18 @@ public:
 	{
 		friend class Channel;
 	public:
-		SubmixType( const std::wstring& name = L"" );
+		SubmixType( const std::string& name = "" );
 		~SubmixType() noexcept;
 		SubmixType( const SubmixType& rhs ) = delete;
 		SubmixType& operator=( const SubmixType& rhs ) = delete;
 		SubmixType( SubmixType&& rhs ) cond_noex;
 		SubmixType& operator=( SubmixType&& rhs ) cond_noex;
 	
-		std::wstring getName() const cond_noex;
-		void setName( const std::wstring& name ) cond_noex;
+		std::string getName() const cond_noex;
+		void setName( const std::string& name ) cond_noex;
 		void setVolume( float volume = 1.0f ) cond_noex;
 	private:
-		std::wstring m_name;
+		std::string m_name;
 		XAUDIO2_SEND_DESCRIPTOR m_outputVoiceSendDesc;
 		XAUDIO2_VOICE_SENDS m_outputVoiceSends;
 		struct IXAudio2SubmixVoice* m_pSubmixVoice = nullptr;
@@ -160,8 +160,8 @@ public:
 	//	\function	Sound
 	//	\brief  constructor loads sound file and configures all its properties
 	//	\date	2020/10/25 15:04
-	Sound( const wchar_t* zsFilename, const std::wstring& defaultName = L"",
-		const std::wstring& defaultSubmixName = L"" );
+	Sound( const char* zsFilename, const std::string& defaultName = "",
+		const std::string& defaultSubmixName = "" );
 	Sound( const Sound& rhs ) = delete;
 	Sound& operator=( const Sound& rhs ) = delete;
 
@@ -169,18 +169,18 @@ public:
 	Sound& operator=( Sound&& rhs ) cond_noex;
 	~Sound() noexcept;
 
-	std::wstring getName() const cond_noex;
+	std::string getName() const cond_noex;
 	//===================================================
 	//	\function	getTypeName
 	//	\brief  get sound type eg effects, music, dialogue etc
 	//			each sound type corresponds to a Submix voice
 	//	\date	2020/10/25 14:05
-	std::wstring getSubmixName() const cond_noex;
+	std::string getSubmixName() const cond_noex;
 	void play( float volume = 1.0f );
 	void stop();
 private:
-	std::wstring m_name;
-	std::wstring m_submixName;
+	std::string m_name;
+	std::string m_submixName;
 	std::unique_ptr<BYTE[]> m_audioData;
 	std::unique_ptr<WAVEFORMATEXTENSIBLE> m_pWaveFormat;
 	std::unique_ptr<struct XAUDIO2_BUFFER> m_pXaudioBuffer;

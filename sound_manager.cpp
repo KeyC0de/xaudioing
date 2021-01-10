@@ -1,14 +1,14 @@
 #include "winner.h"
 #include "sound_manager.h"
 #include "assertions.h"
-#include "util.h"
+#include "utils.h"
 
 #ifdef _DEBUG
 #	include <iostream>
 #endif // _DEBUG
 
-namespace mwrl = Microsoft::WRL;
 
+namespace mwrl = Microsoft::WRL;
 
 namespace sound_wave_properties
 {
@@ -117,7 +117,7 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 
 	// 5. optional - specify an output (submix) voice for this source voice
 	const auto& soundSubmixName = sound.getSubmixName();
-	if ( soundSubmixName != L"" )
+	if ( soundSubmixName != "" )
 	{
 		// already locked!
 		//std::unique_lock<std::mutex> lg{ soundManager.m_mu, std::try_to_lock };
@@ -127,7 +127,7 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 
 		ASSERT( waveFormat->Format.nChannels
 			== sound_wave_properties::nChannelsPerSound,
-				L"Wrong amount of channels per sound!" );
+				"Wrong amount of channels per sound!" );
 		soundManager.m_pXAudio2->CreateSubmixVoice( &newSubmix->m_pSubmixVoice,
 			waveFormat->Format.nChannels,
 			waveFormat->Format.nSamplesPerSec,
@@ -172,15 +172,15 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	}
 
 	ASSERT( waveFormat->Format.wFormatTag == WAVE_FORMAT_PCM,
-				L"Only XPCM technique allowed!" );
+				"Only XPCM technique allowed!" );
 	ASSERT( waveFormat->Format.wBitsPerSample
 			== sound_wave_properties::nBitsPerSample,
-				L"Wrong bits per sample!" );
+				"Wrong bits per sample!" );
 	ASSERT( waveFormat->Format.nSamplesPerSec
 			== sound_wave_properties::nSamplesPerSec,
-				L"Wrong number of samples per second!" );
+				"Wrong number of samples per second!" );
 	ASSERT( waveFormat->Format.cbSize == 0,
-				L"No extra Format information allowed" );
+				"No extra Format information allowed" );
 
 	// 6. submit the XAUDIO2_BUFFER to the source voice
 	hres = m_pSourceVoice->SubmitSourceBuffer( m_pSound->m_pXaudioBuffer.get() );
@@ -190,8 +190,8 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 void SoundManager::Channel::playSound( Sound* sound,
 	float volume )
 {
-	ASSERT( m_pSound, L"Null Sound!" );
-	ASSERT( m_pSourceVoice, L"Null Voice!" );
+	ASSERT( m_pSound, "Null Sound!" );
+	ASSERT( m_pSourceVoice, "Null Voice!" );
 
 	{
 		std::lock_guard<std::mutex> ul{ sound->m_mu };
@@ -206,21 +206,21 @@ void SoundManager::Channel::playSound( Sound* sound,
 
 void SoundManager::Channel::stopSound() cond_noex
 {
-	ASSERT( m_pSound, L"Sound was not initialized!" );
-	ASSERT( m_pSourceVoice, L"Voice was not set!" );
+	ASSERT( m_pSound, "Sound was not initialized!" );
+	ASSERT( m_pSourceVoice, "Voice was not set!" );
 	m_pSourceVoice->Stop();
 	m_pSourceVoice->FlushSourceBuffers();
 }
 
 void SoundManager::Channel::rechannel( const Sound* pOldSound, Sound* pNewSound )
 {
-	ASSERT( pOldSound == pNewSound, L"Channel mismatch!" );
+	ASSERT( pOldSound == pNewSound, "Channel mismatch!" );
 	m_pSound = pNewSound;
 }
 
 Sound* SoundManager::Channel::getSound() const cond_noex
 {
-	ASSERT( m_pSound, L"Sound is null!" );
+	ASSERT( m_pSound, "Sound is null!" );
 	return m_pSound;
 }
 
@@ -270,7 +270,7 @@ void SoundManager::rearrangeChannels( Channel& channel )
 		[&channel] ( const std::unique_ptr<Channel>& cha ) {
 			return &channel == cha.get();
 		} );
-	ASSERT( &ref != nullptr, L"Channel was already absent!" );
+	ASSERT( &ref != nullptr, "Channel was already absent!" );
 
 	// rearrange
 	m_idleChannels.emplace_back( std::move( *ref ) );
@@ -422,9 +422,9 @@ HRESULT Sound::readChunkData( HANDLE file,
 
 #pragma endregion
 
-Sound::Sound( const wchar_t* zsFilename,
-	const std::wstring& defaultName,
-	const std::wstring& defaultSubmixName )
+Sound::Sound( const char* zsFilename,
+	const std::string& defaultName,
+	const std::string& defaultSubmixName )
 	:
 	m_name{ defaultName },
 	m_submixName{ defaultSubmixName },
@@ -432,7 +432,7 @@ Sound::Sound( const wchar_t* zsFilename,
 	m_pWaveFormat{ std::make_unique<WAVEFORMATEXTENSIBLE>() },
 	m_pXaudioBuffer{ std::make_unique<XAUDIO2_BUFFER>() }
 {
-	HANDLE file = CreateFileW( zsFilename,
+	HANDLE file = CreateFileW( s2ws( zsFilename ).data(),
 		GENERIC_READ,
 		FILE_SHARE_READ,
 		nullptr,
@@ -472,7 +472,7 @@ Sound::Sound( const wchar_t* zsFilename,
 	ASSERT_HRES_IF_FAILED;
 	if ( fileType != fourccWAVE )
 	{
-		std::wcout << L"Unsupported Filetype\n" << fileType << L" discovered:\n";
+		std::cout << "Unsupported Filetype\n" << fileType << " discovered:\n";
 #ifdef _DEBUG	// experiment
 		__debugbreak();
 #endif // _DEBUG
@@ -498,7 +498,7 @@ Sound::Sound( const wchar_t* zsFilename,
 		chunkPosition );
 	ASSERT_HRES_IF_FAILED;
 
-	//std::wcout << chunkSize << L'\n';
+	//std::cout << chunkSize << '\n';
 	m_audioData = std::make_unique<BYTE[]>( static_cast<std::size_t>( chunkSize ) );
 	hres = readChunkData( file,
 		m_audioData.get(),
@@ -554,12 +554,12 @@ Sound::~Sound() noexcept
 	}
 }
 
-std::wstring Sound::getName() const cond_noex
+std::string Sound::getName() const cond_noex
 {
 	return m_name;
 }
 
-std::wstring Sound::getSubmixName() const cond_noex
+std::string Sound::getSubmixName() const cond_noex
 {
 	return m_submixName;
 }
@@ -581,13 +581,13 @@ void Sound::stop()
 			channel->stopSound();
 		}
 	}
-	//if ( m_submixName != L"" )
+	//if ( m_submixName != "" )
 	//{
 	//
 	//}
 }
 
-SoundManager::SubmixType::SubmixType( const std::wstring& name )
+SoundManager::SubmixType::SubmixType( const std::string& name )
 	:
 	m_name{ name },
 	m_outputVoiceSendDesc{ 0 },
@@ -604,12 +604,12 @@ SoundManager::SubmixType::~SubmixType() noexcept
 	}
 }
 
-std::wstring SoundManager::SubmixType::getName() const cond_noex
+std::string SoundManager::SubmixType::getName() const cond_noex
 {
 	return m_name;
 }
 
-void SoundManager::SubmixType::setName( const std::wstring& name ) cond_noex
+void SoundManager::SubmixType::setName( const std::string& name ) cond_noex
 {
 	m_name = name;
 }
@@ -638,7 +638,7 @@ SoundManager::SubmixType::SubmixType( SubmixType&& rhs ) cond_noex
 	m_outputVoiceSends{ std::move( rhs.m_outputVoiceSends ) },
 	m_pSubmixVoice{ std::move( rhs.m_pSubmixVoice ) }
 {
-	rhs.m_name = L"";
+	rhs.m_name = "";
 	rhs.m_pSubmixVoice = nullptr;
 }
 

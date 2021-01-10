@@ -4,7 +4,8 @@
 
 COMInitializer::COMInitializer()
 {
-	m_hres = CoInitializeEx( nullptr, COINIT_MULTITHREADED );// COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE );
+	m_hres = CoInitializeEx( nullptr,
+		COINIT_MULTITHREADED );// COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE );
 }
 
 COMInitializer::~COMInitializer()

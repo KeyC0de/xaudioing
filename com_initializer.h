@@ -1,5 +1,6 @@
 #include "winner.h"
 
+
 class COMInitializer final
 {
 public:

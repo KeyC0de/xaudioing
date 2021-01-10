@@ -82,7 +82,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);BDEBUG=true;</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);BDEBUG=true;pass=(void)0;_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
@@ -110,7 +110,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);BDEBUG=false;_NDEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);BDEBUG=false;_NDEBUG;pass=(void)0;_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING</PreprocessorDefinitions>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
     </ClCompile>
@@ -166,7 +166,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
       </ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="util.h" />
+    <ClInclude Include="utils.h" />
     <ClInclude Include="winner.h" />
   </ItemGroup>
   <ItemGroup>
@@ -175,7 +175,6 @@
   <ItemGroup>
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
-    <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
