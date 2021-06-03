@@ -5,7 +5,6 @@
 
 
 Website post [link](https://keyc0de.com/posts/5.html).<br>
-[Contact](https://keyc0de.com/contact.html).
 
 
 # License
