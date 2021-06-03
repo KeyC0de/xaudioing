@@ -7,6 +7,8 @@
 #	include <iostream>
 #endif // _DEBUG
 
+#pragma comment( lib, "xaudio2_8.lib" )
+
 
 namespace mwrl = Microsoft::WRL;
 

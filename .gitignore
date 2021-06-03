@@ -266,3 +266,5 @@ __pycache__/
 # exclude specific files
 xaudio2_complete_barebones_test.cpp
 xaudio2_x3daudio_complete_barebones_test.cpp
+readme.html
+readme.site.md

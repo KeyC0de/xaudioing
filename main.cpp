@@ -1,5 +1,3 @@
-#pragma comment( lib, "xaudio2_8.lib" )
-
 #include "com_initializer.h"
 #include "sound_manager.h"
 
