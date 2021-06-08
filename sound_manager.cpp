@@ -3,7 +3,7 @@
 #include "assertions.h"
 #include "utils.h"
 
-#ifdef _DEBUG
+#if defined _DEBUG && !defined NDEBUG
 #	include <iostream>
 #endif // _DEBUG
 
@@ -49,7 +49,7 @@ auto SoundManager::Channel::operator=( Channel&& rhs ) cond_noex -> Channel&
 	return *this;
 }
 
-void SoundManager::Channel::setupChannel( SoundManager& soundManager,
+bool SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	Sound& sound )
 {
 	m_pSound = &sound;
@@ -187,6 +187,8 @@ void SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	// 6. submit the XAUDIO2_BUFFER to the source voice
 	hres = m_pSourceVoice->SubmitSourceBuffer( m_pSound->m_pXaudioBuffer.get() );
 	ASSERT_HRES_IF_FAILED;
+
+	return true;
 }
 
 void SoundManager::Channel::playSound( Sound* sound,

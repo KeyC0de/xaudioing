@@ -51,7 +51,7 @@ public:
 		Channel( Channel&& rhs ) cond_noex;
 		Channel& operator=( Channel&& rhs ) cond_noex;
 
-		void setupChannel( SoundManager& soundManager, class Sound& sound );
+		bool setupChannel( SoundManager& soundManager, class Sound& sound );
 		void playSound( class Sound* sound, float volume );
 		void stopSound() cond_noex;
 		//===================================================
