@@ -65,16 +65,16 @@ public:
 		class Sound* m_pSound;
 	};
 
-	class SubmixType final
+	class Submix final
 	{
 		friend class Channel;
 	public:
-		SubmixType( const std::string& name = "" );
-		~SubmixType() noexcept;
-		SubmixType( const SubmixType& rhs ) = delete;
-		SubmixType& operator=( const SubmixType& rhs ) = delete;
-		SubmixType( SubmixType&& rhs ) cond_noex;
-		SubmixType& operator=( SubmixType&& rhs ) cond_noex;
+		Submix( const std::string& name = "" );
+		~Submix() noexcept;
+		Submix( const Submix& rhs ) = delete;
+		Submix& operator=( const Submix& rhs ) = delete;
+		Submix( Submix&& rhs ) cond_noex;
+		Submix& operator=( Submix&& rhs ) cond_noex;
 	
 		std::string getName() const cond_noex;
 		void setName( const std::string& name ) cond_noex;
@@ -99,14 +99,14 @@ public:
 	~SoundManager() noexcept;
 
 	void setMasterVolume( float volume = 1.0f );
-	void setSubmixVolume( const SubmixType& submix, float volume = 1.0f ) cond_noex;
+	void setSubmixVolume( const Submix& submix, float volume = 1.0f ) cond_noex;
 	void playChannelSound( class Sound* sound, float volume );
 	//===================================================
 	//	\function	rearrangeChannels
 	//	\brief  removes occupied Channel & places it in the idle list
 	//	\date	2020/10/25 19:45
 	void rearrangeChannels( Channel& channel );
-	//void disableSubmixVoice( const SubmixType& submix );
+	//void disableSubmixVoice( const Submix& submix );
 private:
 	SoundManager( WAVEFORMATEXTENSIBLE* format );
 private:
@@ -117,7 +117,7 @@ private:
 	std::mutex m_mu;
 	std::vector<std::unique_ptr<Channel>> m_occupiedChannels;
 	std::vector<std::unique_ptr<Channel>> m_idleChannels;
-	std::vector<std::unique_ptr<SubmixType>> m_submixes;
+	std::vector<std::unique_ptr<Submix>> m_submixes;
 
 	static inline constexpr size_t nMaxAudioChannels = 64u;
 	static inline constexpr size_t nMaxSubmixes = 8u;

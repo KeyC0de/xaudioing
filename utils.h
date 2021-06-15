@@ -93,4 +93,3 @@ inline std::size_t getIndexOfBack( Container& t )
 {
 	return t.size() - 1;
 }
-

@@ -174,7 +174,7 @@ bool SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	}
 
 	ASSERT( waveFormat->Format.wFormatTag == WAVE_FORMAT_PCM,
-				"Only XPCM technique allowed!" );
+				"Only XPCM format allowed!" );
 	ASSERT( waveFormat->Format.wBitsPerSample
 			== sound_wave_properties::nBitsPerSample,
 				"Wrong bits per sample!" );
@@ -306,7 +306,7 @@ SoundManager::SoundManager( WAVEFORMATEXTENSIBLE* format )
 	m_submixes.reserve( nMaxSubmixes );
 	for ( size_t i = 0; i < nMaxSubmixes; ++i )
 	{
-		m_submixes.emplace_back( std::make_unique<SubmixType>() );
+		m_submixes.emplace_back( std::make_unique<Submix>() );
 	}
 }
 
@@ -591,7 +591,7 @@ void Sound::stop()
 	//}
 }
 
-SoundManager::SubmixType::SubmixType( const std::string& name )
+SoundManager::Submix::Submix( const std::string& name )
 	:
 	m_name{ name },
 	m_outputVoiceSendDesc{ 0 },
@@ -599,7 +599,7 @@ SoundManager::SubmixType::SubmixType( const std::string& name )
 {
 }
 
-SoundManager::SubmixType::~SubmixType() noexcept
+SoundManager::Submix::~Submix() noexcept
 {
 	if ( m_pSubmixVoice )
 	{
@@ -608,17 +608,17 @@ SoundManager::SubmixType::~SubmixType() noexcept
 	}
 }
 
-std::string SoundManager::SubmixType::getName() const cond_noex
+std::string SoundManager::Submix::getName() const cond_noex
 {
 	return m_name;
 }
 
-void SoundManager::SubmixType::setName( const std::string& name ) cond_noex
+void SoundManager::Submix::setName( const std::string& name ) cond_noex
 {
 	m_name = name;
 }
 
-void SoundManager::setSubmixVolume( const SubmixType& submix, float volume ) cond_noex
+void SoundManager::setSubmixVolume( const Submix& submix, float volume ) cond_noex
 {
 	std::lock_guard<std::mutex> lg{ m_mu };
 	for ( const auto& s : m_submixes )
@@ -630,12 +630,12 @@ void SoundManager::setSubmixVolume( const SubmixType& submix, float volume ) con
 	}
 }
 
-void SoundManager::SubmixType::setVolume( float volume ) cond_noex
+void SoundManager::Submix::setVolume( float volume ) cond_noex
 {
 	m_pSubmixVoice->SetVolume( volume );
 }
 
-SoundManager::SubmixType::SubmixType( SubmixType&& rhs ) cond_noex
+SoundManager::Submix::Submix( Submix&& rhs ) cond_noex
 	:
 	m_name{ std::move( rhs.m_name ) },
 	m_outputVoiceSendDesc{ std::move( rhs.m_outputVoiceSendDesc ) },
@@ -646,7 +646,7 @@ SoundManager::SubmixType::SubmixType( SubmixType&& rhs ) cond_noex
 	rhs.m_pSubmixVoice = nullptr;
 }
 
-SoundManager::SubmixType& SoundManager::SubmixType::operator=( SubmixType&& rhs )
+SoundManager::Submix& SoundManager::Submix::operator=( Submix&& rhs )
 	cond_noex
 {
 	if ( this != &rhs )
