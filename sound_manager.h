@@ -43,6 +43,9 @@ public:
 	class Channel final
 	{
 		friend class Sound;
+
+		struct IXAudio2SourceVoice* m_pSourceVoice = nullptr;
+		class Sound* m_pSound;
 	public:
 		Channel() = default;
 		Channel( const Channel& rhs ) = delete;
@@ -60,14 +63,16 @@ public:
 		//	\date	2020/10/25 19:18
 		void rechannel( const class Sound* pOldSound, class Sound* pNewSound );
 		class Sound* getSound() const cond_noex;
-	private:
-		struct IXAudio2SourceVoice* m_pSourceVoice = nullptr;
-		class Sound* m_pSound;
 	};
 
 	class Submix final
 	{
 		friend class Channel;
+
+		std::string m_name;
+		XAUDIO2_SEND_DESCRIPTOR m_outputVoiceSendDesc;
+		XAUDIO2_VOICE_SENDS m_outputVoiceSends;
+		struct IXAudio2SubmixVoice* m_pSubmixVoice = nullptr;
 	public:
 		Submix( const std::string& name = "" );
 		~Submix() noexcept;
@@ -79,12 +84,19 @@ public:
 		std::string getName() const cond_noex;
 		void setName( const std::string& name ) cond_noex;
 		void setVolume( float volume = 1.0f ) cond_noex;
-	private:
-		std::string m_name;
-		XAUDIO2_SEND_DESCRIPTOR m_outputVoiceSendDesc;
-		XAUDIO2_VOICE_SENDS m_outputVoiceSends;
-		struct IXAudio2SubmixVoice* m_pSubmixVoice = nullptr;
 	};
+private:
+	WAVEFORMATEXTENSIBLE* m_pFormat;
+
+	Microsoft::WRL::ComPtr<struct IXAudio2> m_pXAudio2;
+	struct IXAudio2MasteringVoice* m_pMasterVoice = nullptr;
+	std::mutex m_mu;
+	std::vector<std::unique_ptr<Channel>> m_occupiedChannels;
+	std::vector<std::unique_ptr<Channel>> m_idleChannels;
+	std::vector<std::unique_ptr<Submix>> m_submixes;
+
+	static inline constexpr size_t nMaxAudioChannels = 64u;
+	static inline constexpr size_t nMaxSubmixes = 8u;
 public:
 	//===================================================
 	//	\function	getInstance
@@ -109,18 +121,6 @@ public:
 	//void disableSubmixVoice( const Submix& submix );
 private:
 	SoundManager( WAVEFORMATEXTENSIBLE* format );
-private:
-	WAVEFORMATEXTENSIBLE* m_pFormat;
-
-	Microsoft::WRL::ComPtr<struct IXAudio2> m_pXAudio2;
-	struct IXAudio2MasteringVoice* m_pMasterVoice = nullptr;
-	std::mutex m_mu;
-	std::vector<std::unique_ptr<Channel>> m_occupiedChannels;
-	std::vector<std::unique_ptr<Channel>> m_idleChannels;
-	std::vector<std::unique_ptr<Submix>> m_submixes;
-
-	static inline constexpr size_t nMaxAudioChannels = 64u;
-	static inline constexpr size_t nMaxSubmixes = 8u;
 };
 
 
