@@ -23,7 +23,7 @@
 //	\brief	singleton class
 //			back-end
 //			non-copyable & non-movable
-//			stores the Sounds in vector of Channel<Sound>>s
+//			stores the Sounds in vector of Channel<Sound>
 //			encapsulates a Mastering voice which works with a single wave format
 //			thus all Sounds contained in a SoundManager object must have the same format
 //=============================================================
@@ -134,7 +134,6 @@ private:
 //			front-end
 //			encapsulates a sound
 //			ctor creates the sound properties
-//			::play() instructs the sound manager to play the sound on free channel(s)
 //=============================================================
 class Sound final
 {
@@ -176,6 +175,10 @@ public:
 	//			each sound type corresponds to a Submix voice
 	//	\date	2020/10/25 14:05
 	std::string getSubmixName() const cond_noex;
+	//===================================================
+	//	\function	play
+	//	\brief  instructs the sound manager to play the sound on free channel(s)
+	//	\date	2020/10/25 13:05
 	void play( float volume = 1.0f );
 	void stop();
 private:
