@@ -2,7 +2,6 @@
 #include "sound_manager.h"
 #include "assertions.h"
 #include "utils.h"
-
 #if defined _DEBUG && !defined NDEBUG
 #	include <iostream>
 #endif // _DEBUG
