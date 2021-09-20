@@ -2,13 +2,15 @@
 
 #if defined _DEBUG && !defined NDEBUG
 
+#include <iostream>
+
 #	ifdef __cplusplus
 extern "C" {
 #	endif
 
-//#		define LSTR( expr ) L ## expr
-//#		define STRINGIFY( expr ) LSTR( #expr )
-#		define STRINGIFY( expr ) #expr
+//#	define LSTR( expr ) L ## expr
+//#	define STRINGIFY( expr ) LSTR( #expr )
+#	define STRINGIFY( expr ) #expr
 extern bool assertPrint( const char* expr,
 	const char* file,
 	int line,
@@ -16,12 +18,26 @@ extern bool assertPrint( const char* expr,
 	const char* msg );
 
 // assert that arg is true, if not print error
-#		define ASSERT( arg, msg ) (!(arg) \
-			&& assertPrint( STRINGIFY( arg ),\
+#	define ASSERT( arg, msg ) if ( !(arg) && assertPrint( STRINGIFY( arg ),\
 				__FILE__,\
 				__LINE__,\
 				__FUNCTION__,\
-				msg ) )
+				msg ) )\
+				{\
+					std::system( "pause" );\
+					std::exit( -1 );\
+				}
+
+// assert with the optional argument not supplied
+#	define ASSERTO( arg ) if ( !(arg) && assertPrint( STRINGIFY( arg ),\
+				__FILE__,\
+				__LINE__,\
+				__FUNCTION__ ) )\
+				{\
+					std::system( "pause" );\
+					std::exit( -1 );\
+				}
+
 #	ifdef __cplusplus
 }
 #	endif

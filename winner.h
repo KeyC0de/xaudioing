@@ -24,17 +24,8 @@ static_assert( _MSVC_LANG >= 201703L,
 #ifndef USE_GDIPLUS
 // defines to get rid of superfluous Windows functionality
 // However GDI+ requires all the functionality that is disabled by these switches
-#	define WIN32_LEAN_AND_MEAN		// Cryptography, DDE, RPC, Shell, and Windows Sockets
+#	define WIN32_LEAN_AND_MEAN		// Cryptography, DDE, RPC, Shell, MCI, Windows Sockets
 #	define NOGDICAPMASKS			// CC_*, LC_*, PC_*, CP_*, TC_*, RC_
-//#	define NOVIRTUALKEYCODES		// VK_*
-//#	define NOWINMESSAGES			// WM_*, EM_*, LB_*, CB_*
-//#	define NOWINSTYLES				// WS_*, CS_*, ES_*, LBS_*, SBS_*, CBS_*
-//#	define NOSYSMETRICS				// SM_*
-//#	define NOGDI					// All GDI defines and routines
-//#	define NOUSER					// All USER defines and routines
-//#	define NOICONS					// IDI_*
-//#	define NOKEYSTATES				// MK_*
-//#	define NOSHOWWINDOW				// SW_*
 #	define NOMENUS					// MF_*
 #	define NOSYSCOMMANDS			// SC_*
 #	define NORASTEROPS				// Binary and Tertiary raster ops
@@ -42,22 +33,18 @@ static_assert( _MSVC_LANG >= 201703L,
 #	define NOATOM					// Atom manager routines
 #	define NOCLIPBOARD				// Clipboard routines
 #	define NOCOLOR					// Screen colors
-#	define NOCTLMGR					// Control and Dialog routines
+#ifdef NO_DUMPS
+#	define NOCTLMGR					// Control and Dialog routines, generating dumps
+#endif // !TAKING_DUMPS
 #	define NODRAWTEXT				// DrawText() and DT_*
 #	define NOKERNEL					// KERNEL macros and routines
-//#	define NONLS					// NLS (Native Language Support) macros and routines
-//#	define NOMB						// MB_* and MessageBox()
 #	define NOMEMMGR					// GMEM_*, LMEM_*, GHND, LHND, associated routines
 #	define NOMETAFILE				// typedef METAFILEPICT
 #	define NOOPENFILE				// OpenFile(), OemToAnsi, AnsiToOem, and OF_*
 #	define NOSCROLL					// SB_* and scrolling routines
 #	define NOSERVICE				// All SERVICE_ Controller routines
-//#	define NOSOUND					// Sound driver routines
 #	define NOIMAGE					// 
-//#	define NOTEXTMETRIC				// typedef TEXTMETRIC and associated routines
-									// required by atlbase.h
 #	define NOWH						// SetWindowsHook and WH_*
-//#	define NOWINOFFSETS				// GWL_*, GCL_*, associated routines
 #	define NOCOMM					// No serial communication API & driver routines
 #	define NOKANJI					// Kanji support
 #	define NOHELP					// Help engine interface
@@ -68,24 +55,47 @@ static_assert( _MSVC_LANG >= 201703L,
 #	define NOIMM					// no Input Method Manager
 #	define NOMCX					// no Media Center Extender (for xBox)
 #	define NOTAPE					// no Tape
-//#	define ANSI_ONLY				// no unicode support
-#	ifndef _DEBUG
+#	if defined NDEBUG || !defined _DEBUG 
 #		define NOPROFILER			// Profiler interface
-#	endif // _DEBUG
+#	endif // NDEBUG
 #endif
+
+//#	define NOVIRTUALKEYCODES		// VK_*
+//#	define NOWINMESSAGES			// WM_*, EM_*, LB_*, CB_*
+//#	define NOWINSTYLES				// WS_*, CS_*, ES_*, LBS_*, SBS_*, CBS_*
+//#	define NOSYSMETRICS				// SM_*
+//#	define NOGDI					// All GDI defines and routines
+//#	define NOUSER					// All USER defines and routines
+//#	define NOICONS					// IDI_*
+//#	define NOKEYSTATES				// MK_*
+//#	define NOSHOWWINDOW				// SW_*
+//#	define NONLS					// NLS (Native Language Support) macros and routines
+//#	define NOMB						// MB_* and MessageBox()
+//#	define NOSOUND					// Sound driver routines
+//#	define NOTEXTMETRIC				// typedef TEXTMETRIC and associated routines
+									// 	required by atlbase.h
+//#	define NOWINOFFSETS				// GWL_*, GCL_*, associated routines
+//#	define ANSI_ONLY				// no unicode support
 
 #if defined( _MFC_VER ) || defined( _AFX )
 #	define _AFX_ALL_WARNINGS	// turns off MFC's hiding of some common and often safely ignored warning message
 #	define VC_EXTRALEAN			// more trimming of windows headers for MFC only projects
 #endif
 
-#define NOMINMAX		// no windows min-max functions, we want the std:: mins & maxes
-#define STRICT			// enables Strict m_topo checking for windows types
+#ifndef NOMINMAX
+#	define NOMINMAX		// no windows min-max functions, we want the std:: mins & maxes
+#endif // !NOMINMAX
+#ifndef STRICT
+#	define STRICT		// enables Strict pointer checking for windows types
+#endif // !STRICT
 
-#define _CRT_SECURE_NO_DEPRECATE	// non-secure c/winapi functions are not deprecated
-#define _SCL_SECURE_NO_WARNINGS		// don't emit warnings for non-secure winapi functions
-//#define _ITERATOR_DEBUG_LEVEL	0	// disable checked iterators === #define _SECURE_SCL 0
-#define _CRT_SECURE_NO_WARNINGS 1
+#if defined NDEBUG || !defined _DEBUG 
+//#	define _ITERATOR_DEBUG_LEVEL		0	// disables checked iterators - no checking on container bounds for overwrites 
+											// equivalent to #define _SECURE_SCL 0
+#endif // NDEBUG
+
+#define _CRT_SECURE_NO_DEPRECATE		1	// non-secure c/winapi functions are not deprecated
+#define _CRT_SECURE_NO_WARNINGS			1	// don't emit warnings for non-secure winapi functions
 #define _WINSOCK_DEPRECATED_NO_WARNINGS 1
 
 #ifdef _ALLOW_KEYWORD_MACROS
@@ -95,21 +105,7 @@ static_assert( _MSVC_LANG >= 201703L,
 
 #include <Windows.h>
 
-#define IDD_MFPLAYBACK_DIALOG		102
-#define IDD_ABOUTBOX				103
-#define IDM_ABOUT					104
-#define IDM_EXIT					105
-#define IDI_SMALL					108
-#define IDC_MFPLAYBACK				109
-#define IDD_OPENURL					129
-#define IDC_EDIT_URL				1000
-#define ID_FILE_OPENFILE			32771
-#define ID_FILE_OPENURL				32772
-#define IDR_MAINFRAME				128
-#define IDC_MYICON					2
-#define IDC_STATIC					-1
 
-
-// provides relocatable base address at RVA = 0
+// provides relocatable process base address at RVA = 0
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 #define THIS_INSTANCE ( (HINSTANCE)&__ImageBase )
