@@ -138,6 +138,15 @@ private:
 class Sound final
 {
 	friend class SoundManager::Channel;
+
+	std::string m_name;
+	std::string m_submixName;
+	std::unique_ptr<BYTE[]> m_audioData;
+	std::unique_ptr<WAVEFORMATEXTENSIBLE> m_pWaveFormat;
+	std::unique_ptr<struct XAUDIO2_BUFFER> m_pXaudioBuffer;
+	std::mutex m_mu;
+	std::condition_variable m_condVar;
+	std::vector<SoundManager::Channel*> m_busyChannels;	// those are currently playing
 public:
 	//===================================================
 	//	\function	findChunk
@@ -181,13 +190,4 @@ public:
 	//	\date	2020/10/25 13:05
 	void play( float volume = 1.0f );
 	void stop();
-private:
-	std::string m_name;
-	std::string m_submixName;
-	std::unique_ptr<BYTE[]> m_audioData;
-	std::unique_ptr<WAVEFORMATEXTENSIBLE> m_pWaveFormat;
-	std::unique_ptr<struct XAUDIO2_BUFFER> m_pXaudioBuffer;
-	std::mutex m_mu;
-	std::condition_variable m_condVar;
-	std::vector<SoundManager::Channel*> m_busyChannels;	// those are currently playing
 };

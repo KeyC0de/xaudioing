@@ -7,9 +7,11 @@ int main()
 	COMInitializer comInitializer;
 	//using std::string_literals;
 	// 1.
-	const char* zsFilename1 = "assets\\sfx\\ARNOLD_i'll_be_back.wav";
-	const char* zsFilename2 = "assets\\sfx\\AmbientCity_TypeB02.wav";
-	const char* zsFilename3 = "assets\\sfx\\CARTOON_BOING_3.wav";
+	const char* zsFilename1 = "assets/sfx/ARNOLD_i'll_be_back.wav";
+	const char* zsFilename2 = "assets/sfx/AmbientCity_TypeB02.wav";
+	const char* zsFilename3 = "assets/sfx/CARTOON_BOING_3.wav";
+	const char* zsFilename4 = "assets/sfx/arkanoid_brick.wav";
+	const char* zsFilename5 = "assets/sfx/arkanoid_pad.wav";
 	Sound arnie{zsFilename1, "Arnie", "sfx"};
 
 	arnie.play();
@@ -26,14 +28,24 @@ int main()
 	//ambience.play(.25f);
 
 
-	// 4,5
+	// 4, 5
 	// bring it to its knees!
 	Sound arnieAgain{zsFilename1, "ArnieAgainWtf?", "sfx2"};
 	arnieAgain.play( 2.0f );
 	Sound arnieThrice{zsFilename1, "ArnieThrice?"};
 	arnieThrice.play( .4f );
 
-	std::system( "pause" );
+	Sleep( 3000 );
+	// 6, 7
+	Sound brick{zsFilename4};
+	brick.play();
+	Sleep( 1000 );
+	Sound pad{zsFilename5};
+	pad.play();
+	Sleep( 1000 );
 
-	return 0;
+#if defined _DEBUG && !defined NDEBUG
+	while ( !getchar() );
+#endif
+	return EXIT_SUCCESS;
 }
