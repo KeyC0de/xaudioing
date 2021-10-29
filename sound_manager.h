@@ -95,8 +95,8 @@ private:
 	std::vector<std::unique_ptr<Channel>> m_idleChannels;
 	std::vector<std::unique_ptr<Submix>> m_submixes;
 
-	static inline constexpr size_t nMaxAudioChannels = 64u;
-	static inline constexpr size_t nMaxSubmixes = 8u;
+	static inline constexpr size_t m_nMaxAudioChannels = 64u;
+	static inline constexpr size_t m_nMaxSubmixes = 8u;
 public:
 	//===================================================
 	//	\function	getInstance
