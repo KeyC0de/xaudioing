@@ -2,6 +2,7 @@
 #include "sound_manager.h"
 #include "assertions.h"
 #include "utils.h"
+#include "os_utils.h"
 #if defined _DEBUG && !defined NDEBUG
 #	include <iostream>
 #endif // _DEBUG
@@ -11,13 +12,13 @@
 
 namespace mwrl = Microsoft::WRL;
 
-namespace sound_wave_properties
+namespace wav
 {
 	// wav properties - all sounds must have the same format
 	static constexpr WORD nChannelsPerSound = 2u;
 	static constexpr DWORD nSamplesPerSec = 48000u;	// valid: 44100u, 48000u, 96000u
 	static constexpr WORD nBitsPerSample = 16u;
-}// sound_wave_properties
+}// wav
 
 
 SoundManager::SoundManager( WAVEFORMATEXTENSIBLE* format )
@@ -57,14 +58,6 @@ SoundManager::~SoundManager() noexcept
 	m_pMasterVoice = nullptr;
 }
 
-SoundManager::Channel::Channel( Channel&& rhs ) cond_noex
-	:
-	m_pSourceVoice{rhs.m_pSourceVoice},
-	m_pSound{std::move( rhs.m_pSound )}
-{
-	rhs.m_pSourceVoice = nullptr;
-}
-
 SoundManager::Channel::~Channel() noexcept
 {
 	if ( m_pSourceVoice || m_pSound )
@@ -74,13 +67,22 @@ SoundManager::Channel::~Channel() noexcept
 		m_pSound = nullptr;
 	}
 }
-		
+
+SoundManager::Channel::Channel( Channel&& rhs ) cond_noex
+	:
+	m_pSourceVoice{rhs.m_pSourceVoice},
+	m_pSound{rhs.m_pSound}
+{
+	rhs.m_pSourceVoice = nullptr;
+	rhs.m_pSound = nullptr;
+}
+
 auto SoundManager::Channel::operator=( Channel&& rhs ) cond_noex -> Channel&
 {
-	if ( this != &rhs )
-	{
-		std::swap( *this, rhs );
-	}
+	m_pSourceVoice = rhs.m_pSourceVoice;
+	m_pSound = rhs.m_pSound;
+	rhs.m_pSourceVoice = nullptr;
+	rhs.m_pSound = nullptr;
 	return *this;
 }
 
@@ -96,7 +98,7 @@ bool SoundManager::Channel::setupChannel( SoundManager& soundManager,
 		// Called when the voice is about to start processing a new audio buffer.
 		void STDMETHODCALLTYPE OnBufferStart( void* pBufferContext ) override
 		{
-			pass;
+			pass_;
 		}
 
 		// Called when the voice finishes processing a buffer.
@@ -105,51 +107,48 @@ bool SoundManager::Channel::setupChannel( SoundManager& soundManager,
 			Channel& channel = *reinterpret_cast<Channel*>( pBufferContext );
 			channel.stopSound();
 			{
-				std::unique_lock<std::mutex> lg{channel.m_pSound->m_mu};
+				//std::unique_lock<std::mutex> lg{channel.m_pSound->m_mu};
 				// clear Sound's channel if it exists
 				channel.m_pSound->m_busyChannels.erase(
 					std::find( channel.m_pSound->m_busyChannels.begin(),
 						channel.m_pSound->m_busyChannels.end(),
 						&channel ) );
-				//or:
-				//removeByBackSwap( channel.m_pSound->m_busyChannels, &channel );
 				// notify any thread that might be waiting for activeChannels
 				// to become zero (i.e. thread calling destructor)
 				channel.m_pSound->m_condVar.notify_all();
 			}
-			SoundManager::getInstance().rearrangeChannels( channel );
+			SoundManager::getInstance().deactivateChannel( channel );
 		}
 
 		// Called when the voice reaches the end position of a loop.
 		void STDMETHODCALLTYPE OnLoopEnd( void* pBufferContext ) override
 		{
-			pass;
+			pass_;
 		}
 
 		// Called when the voice has just finished playing a contiguous audio stream.
 		void STDMETHODCALLTYPE OnStreamEnd() override
 		{
-			pass;
+			pass_;
 		}
 
 		// Called when a critical error occurs during voice processing.
 		void STDMETHODCALLTYPE OnVoiceError( void* pBufferContext,
-			HRESULT Error )
-			override
+			HRESULT Error ) override
 		{
-			pass;
+			pass_;
 		}
 
 		// Called just after the processing pass for the voice ends.
 		void STDMETHODCALLTYPE OnVoiceProcessingPassEnd() override
 		{
-			pass;
+			pass_;
 		}
 
 		// Called during each processing pass for each voice, just 
 		void STDMETHODCALLTYPE OnVoiceProcessingPassStart( UINT32 bytesRequired ) override
 		{
-			pass;
+			pass_;
 		}
 	};
 
@@ -170,8 +169,6 @@ bool SoundManager::Channel::setupChannel( SoundManager& soundManager,
 		auto& newSubmix = soundManager.m_submixes.back();
 		newSubmix->setName( soundSubmixName );
 
-		ASSERT( waveFormat->Format.nChannels == sound_wave_properties::nChannelsPerSound,
-				"Wrong amount of channels per sound!" );
 		soundManager.m_pXAudio2->CreateSubmixVoice( &newSubmix->m_pSubmixVoice,
 			waveFormat->Format.nChannels,
 			waveFormat->Format.nSamplesPerSec,
@@ -181,10 +178,8 @@ bool SoundManager::Channel::setupChannel( SoundManager& soundManager,
 			nullptr );
 
 		//  create the voice sends structure
-		newSubmix->m_outputVoiceSendDesc = {0,
-			newSubmix->m_pSubmixVoice};
-		newSubmix->m_outputVoiceSends = {1,
-			&newSubmix->m_outputVoiceSendDesc};
+		newSubmix->m_outputVoiceSendDesc = {0, newSubmix->m_pSubmixVoice};
+		newSubmix->m_outputVoiceSends = {1,	&newSubmix->m_outputVoiceSendDesc};
 		
 		// 6. Create the source voice
 		hres = soundManager.m_pXAudio2->CreateSourceVoice( &m_pSourceVoice,
@@ -209,23 +204,12 @@ bool SoundManager::Channel::setupChannel( SoundManager& soundManager,
 	ASSERT_HRES_IF_FAILED;
 
 	// set steady sample rate
-	if ( waveFormat->Format.nSamplesPerSec 
-		!= sound_wave_properties::nSamplesPerSec )
+	if ( waveFormat->Format.nSamplesPerSec != wav::nSamplesPerSec )
 	{
-		waveFormat->Format.nSamplesPerSec 
-			= sound_wave_properties::nSamplesPerSec;
-		hres = m_pSourceVoice->SetSourceSampleRate( sound_wave_properties::nSamplesPerSec );
+		waveFormat->Format.nSamplesPerSec = wav::nSamplesPerSec;
+		hres = m_pSourceVoice->SetSourceSampleRate( wav::nSamplesPerSec );
 		ASSERT_HRES_IF_FAILED;
 	}
-
-	ASSERT( waveFormat->Format.wFormatTag == WAVE_FORMAT_PCM,
-		"Only XPCM format allowed!" );
-	ASSERT( waveFormat->Format.wBitsPerSample == sound_wave_properties::nBitsPerSample,
-		"Wrong bits per sample!" );
-	ASSERT( waveFormat->Format.nSamplesPerSec == sound_wave_properties::nSamplesPerSec,
-		"Wrong number of samples per second!" );
-	ASSERT( waveFormat->Format.cbSize == 0,
-		"No extra Format information allowed" );
 
 	// 6. submit the XAUDIO2_BUFFER to the source voice
 	hres = m_pSourceVoice->SubmitSourceBuffer( m_pSound->m_pXaudioBuffer.get() );
@@ -240,10 +224,7 @@ void SoundManager::Channel::playSound( Sound* sound,
 	ASSERT( m_pSound, "Null Sound!" );
 	ASSERT( m_pSourceVoice, "Null Voice!" );
 
-	{
-		std::lock_guard<std::mutex> ul{sound->m_mu};
-		sound->m_busyChannels.emplace_back( this );
-	}
+	sound->m_busyChannels.emplace_back( this );
 
 	HRESULT hres = m_pSourceVoice->SetVolume( volume );
 	ASSERT_HRES_IF_FAILED;
@@ -287,11 +268,11 @@ void SoundManager::playChannelSound( class Sound* sound,
 	float volume )
 {
 	std::unique_lock<std::mutex> ul{m_mu};
-	if ( !m_idleChannels.empty()
-		&& m_occupiedChannels.size() < m_nMaxAudioChannels )
+	if ( !m_idleChannels.empty() && m_occupiedChannels.size() < m_nMaxAudioChannels )
 	{
 		auto& channel = m_idleChannels.back();
-		channel->setupChannel( *this, *sound );
+		channel->setupChannel( *this,
+			*sound );
 		m_occupiedChannels.emplace_back( std::move( channel ) );
 		m_idleChannels.pop_back();
 		m_occupiedChannels.back()->playSound( sound,
@@ -299,20 +280,20 @@ void SoundManager::playChannelSound( class Sound* sound,
 	}
 }
 
-void SoundManager::rearrangeChannels( Channel& channel )
+void SoundManager::deactivateChannel( Channel& channel )
 {
 	std::lock_guard<std::mutex> lg{m_mu};
-	// convert ptr/ref to iterator
-	auto iter = std::find_if( m_occupiedChannels.begin(),
+	// convert ptr/ref to container iterator
+	auto it = std::find_if( m_occupiedChannels.begin(),
 		m_occupiedChannels.end(),
 		[&channel] ( const std::unique_ptr<Channel>& cha )
 		{
 			return &channel == cha.get();
 		});
-	ASSERT( &iter != nullptr, "Channel was already absent!" );
+	ASSERT( &it != nullptr, "Channel was already absent!" );
 
-	m_idleChannels.emplace_back( std::move( *iter ) );
-	m_occupiedChannels.erase( iter );
+	m_idleChannels.emplace_back( std::move( *it ) );
+	m_occupiedChannels.erase( it );
 }
 
 #pragma region LibrarySoundReading
@@ -445,7 +426,7 @@ Sound::Sound( const char* zsFilename,
 	m_pWaveFormat{std::make_unique<WAVEFORMATEXTENSIBLE>()},
 	m_pXaudioBuffer{std::make_unique<XAUDIO2_BUFFER>()}
 {
-	HANDLE file = CreateFileW( s2ws( zsFilename ).data(),
+	HANDLE file = CreateFileW( util::s2ws( zsFilename ).data(),
 		GENERIC_READ,
 		FILE_SHARE_READ,
 		nullptr,
@@ -454,7 +435,7 @@ Sound::Sound( const char* zsFilename,
 		nullptr );
 	if ( file == INVALID_HANDLE_VALUE )
 	{
-		ASSERT_HRES_IF_FAILED_( HRESULT_FROM_WIN32( GetLastError() ) );
+		ASSERT_IF_FAILED( HRESULT_FROM_WIN32( GetLastError() ) );
 	}
 
 	HRESULT hres = SetFilePointer( file, //-V303
@@ -480,14 +461,14 @@ Sound::Sound( const char* zsFilename,
 	DWORD fileType;
 	hres = readChunkData( file,
 		&fileType,
-		sizeof( DWORD ),
+		sizeof DWORD,
 		chunkPosition );
 	ASSERT_HRES_IF_FAILED;
 	if ( fileType != fourccWAVE )
 	{
-		std::cout << "Unsupported Filetype\n"
+		std::cout << "Unsupported Filetype '"
 			<< fileType
-			<< " discovered:\n";
+			<< "' discovered:\n";
 #if defined _DEBUG && !defined NDEBUG
 		__debugbreak();
 #endif // _DEBUG
@@ -499,12 +480,31 @@ Sound::Sound( const char* zsFilename,
 		chunkSize,
 		chunkPosition );
 	ASSERT_HRES_IF_FAILED;
-	
+
 	hres = readChunkData( file,
 		m_pWaveFormat.get(),
 		chunkSize,
 		chunkPosition );
 	ASSERT_HRES_IF_FAILED;
+
+	ASSERT( m_pWaveFormat->Format.nChannels == wav::nChannelsPerSound,
+		"Wrong amount of channels per sound!" );
+	ASSERT( m_pWaveFormat->Format.wFormatTag == WAVE_FORMAT_PCM,
+		"Only XPCM format allowed!" );
+	ASSERT( m_pWaveFormat->Format.wBitsPerSample == wav::nBitsPerSample,
+		"Wrong bits per sample!" );
+	//ASSERT( m_pWaveFormat->Format.nSamplesPerSec == wav::nSamplesPerSec,
+	//	"Wrong number of samples per second!" );
+	ASSERT( m_pWaveFormat->Format.cbSize == 0,
+		"No extra Format information allowed" );
+
+	m_pWaveFormat->Format.nChannels = wav::nChannelsPerSound;
+	m_pWaveFormat->Format.nSamplesPerSec = wav::nSamplesPerSec;
+	m_pWaveFormat->Format.wBitsPerSample = wav::nBitsPerSample;
+	m_pWaveFormat->Format.nBlockAlign = (wav::nBitsPerSample / 8) * wav::nChannelsPerSound;
+	m_pWaveFormat->Format.nAvgBytesPerSec = m_pWaveFormat->Format.nBlockAlign * wav::nSamplesPerSec;
+	m_pWaveFormat->Format.cbSize = 0;
+	m_pWaveFormat->Format.wFormatTag = WAVE_FORMAT_PCM;
 
 	// 3. locate the 'data' of the chunk and copy its contents into a buffer
 	hres = findChunk( file,
@@ -514,16 +514,16 @@ Sound::Sound( const char* zsFilename,
 	ASSERT_HRES_IF_FAILED;
 
 	//std::cout << chunkSize << '\n';
-	m_audioData = std::make_unique<BYTE[]>( static_cast<std::size_t>( chunkSize ) );
+	m_pAudioData = std::make_unique<BYTE[]>( static_cast<std::size_t>( chunkSize ) );
 	hres = readChunkData( file,
-		m_audioData.get(),
+		m_pAudioData.get(),
 		chunkSize,
 		chunkPosition );
 	ASSERT_HRES_IF_FAILED;
 
 	// 4. populate the XAUDIO2_BUFFER structure
 	m_pXaudioBuffer->AudioBytes = chunkSize;	// size of the audio buffer in Bytes
-	m_pXaudioBuffer->pAudioData = m_audioData.get();	// buffer containing audio data
+	m_pXaudioBuffer->pAudioData = m_pAudioData.get();	// buffer containing audio data
 	m_pXaudioBuffer->Flags = XAUDIO2_END_OF_STREAM;
 }
 
@@ -536,21 +536,33 @@ Sound::Sound( Sound&& rhs ) cond_noex
 	std::unique_lock<std::mutex> ulr{rhs.m_mu, std::defer_lock};
 	std::unique_lock<std::mutex> ull{m_mu, std::defer_lock};
 	std::lock( ull, ulr );
-	m_audioData = std::move( rhs.m_audioData );
+	m_pAudioData = std::move( rhs.m_pAudioData );
 	m_busyChannels = std::move( rhs.m_busyChannels );
 	for ( auto& channel : m_busyChannels )
 	{
-		channel->rechannel( &rhs, this );
+		channel->rechannel( &rhs,
+			this );
 	}
 	rhs.m_condVar.notify_all();
 }
 
 Sound& Sound::operator=( Sound&& rhs ) cond_noex
 {
-	if ( this != &rhs )
+	m_name = std::move( rhs.m_name );
+	m_submixName = std::move( rhs.m_submixName );
+	// lock the rhs mutex before we copy/move to guard from 
+	std::unique_lock<std::mutex> ulr{rhs.m_mu, std::defer_lock};
+	std::unique_lock<std::mutex> ull{m_mu, std::defer_lock};
+	std::lock( ull,
+		ulr );
+	m_pAudioData = std::move( rhs.m_pAudioData );
+	m_busyChannels = std::move( rhs.m_busyChannels );
+	for ( auto& channel : m_busyChannels )
 	{
-		std::swap( *this, rhs );
+		channel->rechannel( &rhs,
+			this );
 	}
+	rhs.m_condVar.notify_all();
 	return *this;
 }
 

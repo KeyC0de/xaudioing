@@ -13,7 +13,7 @@
 
 #define cond_noex noexcept( !BDEBUG )
 
-																						  
+
 //============================================================
 //	\class	SoundManager
 //
@@ -38,7 +38,7 @@ public:
 	//
 	//	\brief	back-end
 	//			each Sound sticks to a single Channel
-	//			at most nMaxAudioChannels can play at a certain time
+	//			at most m_nMaxAudioChannels can play at a certain time
 	//=============================================================
 	class Channel final
 	{
@@ -95,7 +95,7 @@ private:
 	std::vector<std::unique_ptr<Channel>> m_idleChannels;
 	std::vector<std::unique_ptr<Submix>> m_submixes;
 
-	static inline constexpr size_t m_nMaxAudioChannels = 64u;
+	static inline constexpr size_t m_nMaxAudioChannels = 16u;
 	static inline constexpr size_t m_nMaxSubmixes = 8u;
 public:
 	//===================================================
@@ -114,10 +114,10 @@ public:
 	void setSubmixVolume( const Submix& submix, float volume = 1.0f ) cond_noex;
 	void playChannelSound( class Sound* sound, float volume );
 	//===================================================
-	//	\function	rearrangeChannels
+	//	\function	deactivateChannel
 	//	\brief  removes occupied Channel & places it in the idle list
 	//	\date	2020/10/25 19:45
-	void rearrangeChannels( Channel& channel );
+	void deactivateChannel( Channel& channel );
 	//void disableSubmixVoice( const Submix& submix );
 private:
 	SoundManager( WAVEFORMATEXTENSIBLE* format );
@@ -141,7 +141,7 @@ class Sound final
 
 	std::string m_name;
 	std::string m_submixName;
-	std::unique_ptr<BYTE[]> m_audioData;
+	std::unique_ptr<BYTE[]> m_pAudioData;
 	std::unique_ptr<WAVEFORMATEXTENSIBLE> m_pWaveFormat;
 	std::unique_ptr<struct XAUDIO2_BUFFER> m_pXaudioBuffer;
 	std::mutex m_mu;
@@ -158,9 +158,7 @@ public:
 	//	\function	readChunkData
 	//	\brief  read chunk's data (after the chunk has been located)
 	//	\date	2020/10/21 17:37
-	HRESULT readChunkData( HANDLE file,
-		void* buffer,
-		DWORD buffersize,
+	HRESULT readChunkData( HANDLE file, void* buffer, DWORD buffersize,
 		DWORD bufferoffset );
 public:
 	// TODO: Sound Looping
@@ -168,8 +166,8 @@ public:
 	//	\function	Sound
 	//	\brief  constructor loads sound file and configures all its properties
 	//	\date	2020/10/25 15:04
-	Sound( const char* zsFilename, const std::string& defaultName = "",
-		const std::string& defaultSubmixName = "" );
+	Sound( const char* zsFilename, const std::string& name = "",
+		const std::string& submixName = "" );
 	Sound( const Sound& rhs ) = delete;
 	Sound& operator=( const Sound& rhs ) = delete;
 

@@ -37,10 +37,13 @@ int main()
 
 	Sleep( 3000 );
 	// 6, 7
-	Sound brick{zsFilename4};
+	Sound brick{zsFilename4, "Brick"};
+	brick.play();
+	Sleep( 500 );
+	brick.stop();
 	brick.play();
 	Sleep( 1000 );
-	Sound pad{zsFilename5};
+	Sound pad{zsFilename5, "Pad"};
 	pad.play();
 	Sleep( 1000 );
 
