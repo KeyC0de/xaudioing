@@ -23,7 +23,6 @@ int main()
 	Sound anthraxImTheLaw{zsFilename3, "CARTOON_BOING_3", "music"};
 	//anthraxImTheLaw.play();
 	
-	// playing after stop doesn't work though:
 	Sleep( 2000 );
 	ambience.stop();
 	Sleep( 5000 );
