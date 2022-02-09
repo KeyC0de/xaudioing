@@ -18,14 +18,16 @@ int main()
 	
 	// 2.
 	Sound ambience{zsFilename2, "City Ambience", "sfx"};
-	ambience.play( .1f );
+	ambience.play( .5f );
 	// 3.
 	Sound anthraxImTheLaw{zsFilename3, "CARTOON_BOING_3", "music"};
-	anthraxImTheLaw.play();
+	//anthraxImTheLaw.play();
 	
-	ambience.stop();
 	// playing after stop doesn't work though:
-	//ambience.play(.25f);
+	Sleep( 2000 );
+	ambience.stop();
+	Sleep( 5000 );
+	ambience.play(.25f);
 
 
 	// 4, 5
@@ -45,7 +47,6 @@ int main()
 	Sleep( 1000 );
 	Sound pad{zsFilename5, "Pad"};
 	pad.play();
-	Sleep( 1000 );
 
 #if defined _DEBUG && !defined NDEBUG
 	while ( !getchar() );
